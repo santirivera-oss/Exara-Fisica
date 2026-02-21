@@ -173,6 +173,37 @@ header .ha{margin-left:auto}
 /* TTS */
 .tts-btn{margin-left:auto;background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.3);color:var(--bl);font-size:.78rem;padding:4px 12px;border-radius:6px;cursor:pointer;font-family:var(--mn);transition:all .15s;white-space:nowrap}
 .tts-btn:hover{background:rgba(88,166,255,.2)}
+/* ---- SIMULADOR ---- */
+#sec-simulador{display:none}
+.sim-wrap{display:flex;flex-direction:column;gap:16px}
+.sim-fn-bar{display:flex;flex-wrap:wrap;gap:6px}
+.sim-fn-btn{font-family:var(--mn);font-size:.72rem;padding:7px 14px;border-radius:20px;border:1px solid var(--br);background:var(--sf2);color:var(--cd);cursor:pointer;transition:all .2s}
+.sim-fn-btn:hover{border-color:var(--am);color:var(--cr)}.sim-fn-btn.on{background:rgba(230,168,23,.15);border-color:var(--am);color:var(--am)}
+.sim-main{display:grid;grid-template-columns:1fr 280px;gap:16px}
+@media(max-width:900px){.sim-main{grid-template-columns:1fr}}
+.sim-canvas-wrap{position:relative;background:var(--sf);border:1px solid var(--br);border-radius:var(--r);overflow:hidden}
+#simCanvas{display:block;width:100%;cursor:crosshair}
+.sim-coords{position:absolute;top:10px;left:12px;font-family:var(--mn);font-size:.7rem;color:var(--cd);background:rgba(13,17,23,.7);padding:3px 8px;border-radius:4px;pointer-events:none}
+.sim-controls{background:var(--sf);border:1px solid var(--br);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:14px}
+.sim-ctrl{display:flex;flex-direction:column;gap:6px}
+.sim-ctrl-label{display:flex;justify-content:space-between;align-items:center}
+.sim-ctrl-name{font-family:var(--mn);font-size:.72rem;color:var(--am);letter-spacing:.06em}
+.sim-ctrl-val{font-family:var(--mn);font-size:.82rem;color:var(--cr);font-weight:600;min-width:48px;text-align:right}
+input[type=range].sim-range{width:100%;accent-color:var(--am);cursor:pointer;height:4px}
+.sim-fn-eq{background:var(--sf2);border:1px solid rgba(230,168,23,.3);border-radius:6px;padding:8px 14px;font-family:var(--mn);font-size:.88rem;color:var(--am);text-align:center;margin-bottom:4px;word-break:break-all}
+.sim-checkpoint{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.sim-cp{background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.25);border-radius:5px;padding:4px 10px;font-family:var(--mn);font-size:.7rem;color:var(--bl)}
+.sim-desc{background:var(--sf);border:1px solid var(--br);border-radius:var(--r);padding:16px 20px}
+.sim-desc h4{font-family:var(--se);font-size:1.05rem;color:var(--cr);margin-bottom:8px}
+.sim-desc p{font-size:.9rem;color:var(--cd);line-height:1.7}
+.sim-desc p strong{color:var(--cr)}
+.sim-table-wrap{background:var(--sf);border:1px solid var(--br);border-radius:var(--r);padding:16px}
+.sim-table{width:100%;border-collapse:collapse;font-family:var(--mn);font-size:.78rem}
+.sim-table th{background:var(--sf2);color:var(--am);padding:6px 12px;text-align:center;border-bottom:1px solid var(--br)}
+.sim-table td{color:var(--cd);padding:5px 12px;text-align:center;border-bottom:1px solid rgba(48,54,61,.5)}
+.sim-table tr:hover td{background:rgba(230,168,23,.04);color:var(--cr)}
+.sim-reset{font-family:var(--mn);font-size:.7rem;padding:5px 12px;border-radius:5px;border:1px solid var(--br);background:transparent;color:var(--cd);cursor:pointer;margin-top:4px;transition:all .15s;width:100%}
+.sim-reset:hover{border-color:var(--am);color:var(--am)}
 .toast{position:fixed;bottom:24px;right:24px;background:var(--sf);border:1px solid var(--br);border-radius:10px;padding:14px 20px;font-size:.88rem;color:var(--cr);box-shadow:0 8px 30px rgba(0,0,0,.5);transform:translateY(80px);opacity:0;transition:all .35s cubic-bezier(.34,1.56,.64,1);z-index:999;max-width:300px}
 .toast.on{transform:translateY(0);opacity:1}
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--sf)}::-webkit-scrollbar-thumb{background:var(--br);border-radius:3px}
@@ -190,6 +221,7 @@ header .ha{margin-left:auto}
       <nav class="tab-nav" aria-label="Secciones">
         <button class="tab-btn on" onclick="switchTab('ejercicios')" id="tab-ejercicios">⚡ Ejercicios</button>
         <button class="tab-btn"    onclick="switchTab('biblioteca')" id="tab-biblioteca">📚 Biblioteca</button>
+        <button class="tab-btn"    onclick="switchTab('simulador')"  id="tab-simulador">📈 Simulador</button>
       </nav>
       <button class="btn bg" onclick="clearAll()">⟳ Reiniciar</button>
     </div>
@@ -249,6 +281,33 @@ header .ha{margin-left:auto}
     <div id="bibContent"></div>
   </div>
 </div><!-- /sec-biblioteca -->
+
+<!-- ======================================================
+     SECCIÓN: SIMULADOR VISUAL DE FUNCIONES
+====================================================== -->
+<div id="sec-simulador" style="display:none">
+  <div class="sim-wrap">
+    <!-- Selector de función -->
+    <div class="sim-fn-bar" id="simFnBar"></div>
+    <!-- Panel principal: gráfica + controles -->
+    <div class="sim-main">
+      <!-- Canvas de la gráfica -->
+      <div class="sim-canvas-wrap">
+        <canvas id="simCanvas" width="600" height="400"></canvas>
+        <div class="sim-coords" id="simCoords"></div>
+      </div>
+      <!-- Panel de controles -->
+      <div class="sim-controls" id="simControls"></div>
+    </div>
+    <!-- Descripción pedagógica -->
+    <div class="sim-desc" id="simDesc"></div>
+    <!-- Tabla de valores -->
+    <div class="sim-table-wrap">
+      <div class="pt" style="margin-bottom:10px;margin-top:4px">Tabla de valores</div>
+      <div style="overflow-x:auto"><table class="sim-table" id="simTable"></table></div>
+    </div>
+  </div>
+</div><!-- /sec-simulador -->
 </div><!-- /app -->
 <div class="toast" id="toast" role="alert" aria-live="polite"></div>
 <script>
@@ -1400,9 +1459,618 @@ let bibState = { topic: 'velocity', lv: 'basic' };
 function switchTab(tab){
   document.getElementById('sec-ejercicios').style.display = tab==='ejercicios'?'block':'none';
   document.getElementById('sec-biblioteca').style.display = tab==='biblioteca'?'block':'none';
+  document.getElementById('sec-simulador').style.display  = tab==='simulador'?'block':'none';
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('on', b.id==='tab-'+tab));
   if(tab==='biblioteca') renderBib();
+  if(tab==='simulador')  initSim();
 }
+
+// ================================================================
+// SIMULADOR VISUAL DE FUNCIONES
+// Motor: Canvas 2D, ejes dinámicos, cuadrícula adaptativa,
+//        parámetros deslizables, tabla de valores, tooltip XY.
+// 15 funciones didácticas: física, matemáticas, trigonometría,
+//        exponenciales, distribuciones, ondas y más.
+// ================================================================
+
+const SIM_FNS = [
+  {
+    id:'mrua', label:'MRUA — Posición', icon:'🚀',
+    params:[
+      {id:'x0',  label:'x₀ (posición inicial)', min:-20, max:20, step:0.5, val:0, unit:'m'},
+      {id:'v0',  label:'v₀ (vel. inicial)',      min:-20, max:20, step:0.5, val:5, unit:'m/s'},
+      {id:'a',   label:'a (aceleración)',         min:-10, max:10, step:0.5, val:2, unit:'m/s²'},
+    ],
+    xLabel:'t (s)', yLabel:'x (m)', xRange:[0,10],
+    fn: (t,p) => p.x0 + p.v0*t + 0.5*p.a*t*t,
+    eq: 'x(t) = x₀ + v₀·t + ½·a·t²',
+    tableX: [0,1,2,3,4,5,6,7,8,9,10],
+    color:'#58a6ff',
+    desc:{
+      title:'Movimiento Rectilíneo Uniformemente Acelerado',
+      text:`La posición en función del tiempo describe una <strong>parábola</strong>. El parámetro <strong>a</strong> controla la curvatura: si a>0 la parábola abre hacia arriba (aceleración), si a<0 hacia abajo (desaceleración). <strong>x₀</strong> desplaza la curva verticalmente y <strong>v₀</strong> modifica la pendiente inicial. Observa cómo la derivada de esta curva (velocidad) sería una línea recta con pendiente a.`,
+    }
+  },
+  {
+    id:'tiro', label:'Tiro parabólico', icon:'⚾',
+    params:[
+      {id:'v0',    label:'v₀ (velocidad inicial)', min:5,   max:50,  step:1,   val:20, unit:'m/s'},
+      {id:'theta', label:'θ (ángulo)',              min:5,   max:85,  step:1,   val:45, unit:'°'},
+      {id:'h0',    label:'h₀ (altura inicial)',     min:0,   max:30,  step:1,   val:0,  unit:'m'},
+    ],
+    xLabel:'x (m)', yLabel:'y (m)', xRange:[0,100],
+    fn: (x,p) => {
+      const rad = p.theta*Math.PI/180;
+      const vx = p.v0*Math.cos(rad), vy = p.v0*Math.sin(rad);
+      return p.h0 + vy*(x/vx) - 4.9*(x/vx)*(x/vx);
+    },
+    extraInfo: (p) => {
+      const r = p.theta*Math.PI/180;
+      const R = (p.v0*p.v0*Math.sin(2*r)/9.8).toFixed(2);
+      const H = (p.v0*p.v0*Math.sin(r)*Math.sin(r)/19.6+p.h0).toFixed(2);
+      return `Alcance: ${R} m | H_max: ${H} m`;
+    },
+    clipNeg: true,
+    eq: 'y = h₀ + (v₀sinθ/v₀cosθ)x − g/(2v₀²cos²θ)·x²',
+    color:'#3fb950',
+    desc:{
+      title:'Tiro Parabólico',
+      text:`La trayectoria es una <strong>parábola invertida</strong>. Ajusta el ángulo θ y observa: a <strong>45°</strong> se maximiza el alcance horizontal (para h₀=0). Ángulos complementarios (ej. 30° y 60°) dan el mismo alcance. La altura inicial h₀ extiende la trayectoria. La velocidad v₀ escala toda la curva: duplicarla cuadruplica el alcance.`,
+    },
+    tableX: [0,5,10,15,20,25,30,35,40],
+  },
+  {
+    id:'mhs', label:'Movimiento Armónico', icon:'〜',
+    params:[
+      {id:'A', label:'A (amplitud)',  min:0.5, max:5,  step:0.1, val:2,   unit:'m'},
+      {id:'f', label:'f (frecuencia)',min:0.1, max:3,  step:0.1, val:0.5, unit:'Hz'},
+      {id:'φ', label:'φ (fase)',      min:0,   max:360,step:5,   val:0,   unit:'°'},
+    ],
+    xLabel:'t (s)', yLabel:'x (m)', xRange:[0,8],
+    fn: (t,p) => p.A * Math.cos(2*Math.PI*p.f*t + p.φ*Math.PI/180),
+    eq: 'x(t) = A·cos(2πf·t + φ)',
+    color:'#e6a817',
+    tableX: [0,0.5,1,1.5,2,2.5,3,3.5,4],
+    desc:{
+      title:'Movimiento Armónico Simple (MAS)',
+      text:`El MAS describe resortes, péndulos y circuitos LC. La <strong>amplitud A</strong> determina el máximo desplazamiento — la energía es proporcional a A². La <strong>frecuencia f</strong> indica cuántas oscilaciones completas ocurren por segundo (período T=1/f). La <strong>fase φ</strong> desplaza la curva horizontalmente: φ=90° convierte el coseno en seno.`,
+    }
+  },
+  {
+    id:'pendulo', label:'Péndulo simple', icon:'⏳',
+    params:[
+      {id:'L', label:'L (longitud)',    min:0.1, max:5,  step:0.1, val:1,   unit:'m'},
+      {id:'A', label:'A (amplitud °)',  min:1,   max:30, step:1,   val:10,  unit:'°'},
+      {id:'g', label:'g (gravedad)',    min:1,   max:25, step:0.1, val:9.8, unit:'m/s²'},
+    ],
+    xLabel:'t (s)', yLabel:'θ (°)', xRange:[0,8],
+    fn: (t,p) => {
+      const T = 2*Math.PI*Math.sqrt(p.L/p.g);
+      return p.A * Math.cos(2*Math.PI*t/T);
+    },
+    eq: 'θ(t) = A·cos(2π/T·t),   T = 2π√(L/g)',
+    color:'#bc8cff',
+    tableX: [0,0.5,1,1.5,2,2.5,3,3.5,4],
+    extraInfo: (p) => {
+      const T = (2*Math.PI*Math.sqrt(p.L/p.g)).toFixed(3);
+      return `Período T = ${T} s`;
+    },
+    desc:{
+      title:'Péndulo Simple',
+      text:`El período del péndulo solo depende de la <strong>longitud L</strong> y la <strong>gravedad g</strong> — no de la amplitud (para ángulos pequeños). Esto fue lo que descubrió Galileo. Nota cómo en la Luna (g=1.62) el péndulo oscila mucho más lento. Un péndulo de 1 m tiene T≈2 s, base del reloj de péndulo. La dependencia de √L significa que para duplicar el período hay que cuadruplicar la longitud.`,
+    }
+  },
+  {
+    id:'resorte', label:'Energía en resorte', icon:'🔵',
+    params:[
+      {id:'k', label:'k (constante resorte)', min:1,  max:50, step:1,   val:10, unit:'N/m'},
+      {id:'m', label:'m (masa)',               min:0.1,max:5,  step:0.1, val:1,  unit:'kg'},
+      {id:'A', label:'A (amplitud)',            min:0.1,max:3,  step:0.1, val:1,  unit:'m'},
+    ],
+    xLabel:'t (s)', yLabel:'E (J)', xRange:[0,8],
+    fn2: true, // plot two curves
+    fn: (t,p) => {
+      const ω = Math.sqrt(p.k/p.m);
+      return 0.5*p.k*p.A*p.A*Math.cos(ω*t)*Math.cos(ω*t); // Ep
+    },
+    fn_b: (t,p) => {
+      const ω = Math.sqrt(p.k/p.m);
+      return 0.5*p.m*ω*ω*p.A*p.A*Math.sin(ω*t)*Math.sin(ω*t); // Ec
+    },
+    colorB:'#3fb950',
+    eq: 'Ep=½kx²=½kA²cos²(ωt)   Ec=½mv²=½kA²sin²(ωt)',
+    color:'#f85149',
+    legend: ['🔴 Energía potencial (Ep)', '🟢 Energía cinética (Ec)'],
+    tableX: [0,0.5,1,1.5,2,2.5,3],
+    extraInfo: (p) => {
+      const E = (0.5*p.k*p.A*p.A).toFixed(3);
+      const ω = Math.sqrt(p.k/p.m).toFixed(3);
+      return `E_total = ${E} J | ω = ${ω} rad/s`;
+    },
+    desc:{
+      title:'Conservación de Energía en Resorte (MAS)',
+      text:`La energía <strong style="color:#f85149">potencial (Ep)</strong> y <strong style="color:#3fb950">cinética (Ec)</strong> oscilan pero su suma siempre es constante (E_total = ½kA²). Cuando el resorte está en la posición extrema (x=±A), toda la energía es potencial. En el centro (x=0), toda es cinética. Esta gráfica visualiza la conversión continua entre ambas formas de energía — fundamento de la conservación de energía mecánica.`,
+    }
+  },
+  {
+    id:'ley_enfriamiento', label:'Enfriamiento Newton', icon:'🌡',
+    params:[
+      {id:'T0', label:'T₀ (temp. inicial)',  min:50,  max:200, step:5,  val:100, unit:'°C'},
+      {id:'Ta', label:'Tₐ (temp. ambiente)', min:0,   max:40,  step:1,  val:20,  unit:'°C'},
+      {id:'k',  label:'k (constante)',        min:0.05,max:1,   step:0.05,val:0.2, unit:'1/min'},
+    ],
+    xLabel:'t (min)', yLabel:'T (°C)', xRange:[0,20],
+    fn: (t,p) => p.Ta + (p.T0 - p.Ta)*Math.exp(-p.k*t),
+    eq: 'T(t) = Tₐ + (T₀−Tₐ)·e^{−kt}',
+    color:'#f85149',
+    tableX: [0,2,4,6,8,10,12,14,16,18,20],
+    desc:{
+      title:'Ley de Enfriamiento de Newton',
+      text:`Un objeto caliente pierde calor a una tasa proporcional a la diferencia de temperatura con el ambiente. La curva es una <strong>exponencial decreciente</strong> que se aproxima asintóticamente a Tₐ (nunca la cruza). La constante k controla qué tan rápido enfría: mayor k = curva más empinada. Esta ecuación se usa en medicina forense para estimar la hora de muerte, en ingeniería para diseñar disipadores de calor, y en física de materiales.`,
+    }
+  },
+  {
+    id:'ley_coulomb', label:'Fuerza eléctrica vs distancia', icon:'⚡',
+    params:[
+      {id:'q1', label:'q₁ (carga 1)', min:1,  max:20, step:0.5, val:5,  unit:'μC'},
+      {id:'q2', label:'q₂ (carga 2)', min:1,  max:20, step:0.5, val:5,  unit:'μC'},
+    ],
+    xLabel:'r (cm)', yLabel:'F (N)', xRange:[1,30],
+    fn: (r,p) => (9e9 * p.q1*1e-6 * p.q2*1e-6) / ((r/100)*(r/100)),
+    eq: 'F(r) = kQ₁Q₂/r²   (k=9×10⁹ N·m²/C²)',
+    color:'#e6a817',
+    tableX: [1,2,3,5,7,10,15,20,25,30],
+    desc:{
+      title:'Ley de Coulomb — Dependencia 1/r²',
+      text:`La fuerza eléctrica disminuye con el <strong>cuadrado de la distancia</strong>. Esta dependencia 1/r² es la misma que la gravitacional de Newton — no es coincidencia, ambas son fuerzas de campo de largo alcance. Al <strong>duplicar la distancia</strong>, la fuerza se reduce a ¼. Al triplicarla, queda 1/9. Desliza r para visualizar este comportamiento hiperbólico. La curva se dispara verticalmente al acercarse a r=0 — en la realidad, los átomos tienen tamaño finito que lo impide.`,
+    }
+  },
+  {
+    id:'capacitor', label:'Carga de Capacitor (RC)', icon:'🔋',
+    params:[
+      {id:'V0', label:'V₀ (voltaje fuente)', min:1,   max:20, step:0.5, val:5,  unit:'V'},
+      {id:'R',  label:'R (resistencia)',      min:1,   max:20, step:0.5, val:5,  unit:'kΩ'},
+      {id:'C',  label:'C (capacitancia)',     min:100, max:2000,step:50, val:470,unit:'μF'},
+    ],
+    xLabel:'t (s)', yLabel:'Vc (V)', xRange:[0,25],
+    fn: (t,p) => p.V0*(1 - Math.exp(-t/(p.R*1000*p.C*1e-6))),
+    eq: 'Vc(t) = V₀·(1 − e^{−t/RC})',
+    color:'#58a6ff',
+    tableX: [0,1,2,3,5,7,10,13,16,20,25],
+    extraInfo: (p) => {
+      const tau = (p.R*1000*p.C*1e-6).toFixed(3);
+      return `τ = RC = ${tau} s  (al 63% en t=τ)`;
+    },
+    desc:{
+      title:'Carga de Capacitor en Circuito RC',
+      text:`El voltaje del capacitor crece exponencialmente acercándose a V₀ sin nunca alcanzarlo. La <strong>constante de tiempo τ=RC</strong> determina la velocidad: en t=τ el capacitor está al 63.2% de V₀; en t=5τ está al 99.3% (se considera "completamente cargado"). Nota que al duplicar R o C se duplica τ y la curva se "extiende" horizontalmente. Este comportamiento aparece en electrónica (filtros, delays), biología (potenciales de membrana) y química (reacciones de primer orden).`,
+    }
+  },
+  {
+    id:'senoidal', label:'Ondas y Superposición', icon:'🌊',
+    params:[
+      {id:'A1', label:'A₁ (amplitud 1)', min:0.1, max:3,  step:0.1, val:1,   unit:''},
+      {id:'f1', label:'f₁ (frecuencia 1)',min:0.1, max:5,  step:0.1, val:1,   unit:'Hz'},
+      {id:'A2', label:'A₂ (amplitud 2)', min:0,   max:3,  step:0.1, val:0.5, unit:''},
+      {id:'f2', label:'f₂ (frecuencia 2)',min:0.1, max:5,  step:0.1, val:3,   unit:'Hz'},
+    ],
+    xLabel:'t (s)', yLabel:'y', xRange:[0,4],
+    fn2: true,
+    fn: (t,p) => p.A1*Math.sin(2*Math.PI*p.f1*t) + p.A2*Math.sin(2*Math.PI*p.f2*t),
+    fn_b: (t,p) => p.A1*Math.sin(2*Math.PI*p.f1*t),
+    fn_c: (t,p) => p.A2*Math.sin(2*Math.PI*p.f2*t),
+    colorB:'rgba(88,166,255,0.4)',
+    colorC:'rgba(63,185,80,0.4)',
+    eq: 'y = A₁sin(2πf₁t) + A₂sin(2πf₂t)',
+    color:'#e6a817',
+    legend:['🟡 Suma (superposición)','🔵 Onda 1 (A₁,f₁)','🟢 Onda 2 (A₂,f₂)'],
+    tableX: [0,0.25,0.5,0.75,1,1.25,1.5,1.75,2],
+    desc:{
+      title:'Principio de Superposición de Ondas',
+      text:`Dos ondas que se cruzan se <strong>suman punto a punto</strong>. Cuando f₁≈f₂ se producen <em>batidos</em> — variaciones lentas de amplitud que escuchas como "wow-wow" al afinar un instrumento. Cuando f₂ es múltiplo de f₁ (armónicos) aparecen patrones periódicos estables — base del timbre musical. Ajusta f₂/f₁ = 2 (octava), 3/2 (quinta), 4/3 (cuarta) y observa las diferentes formas de onda resultantes.`,
+    }
+  },
+  {
+    id:'gravedad', label:'Gravedad Universal vs r', icon:'🪐',
+    params:[
+      {id:'M',  label:'M (masa en M_tierra)', min:0.5, max:10, step:0.1, val:1,  unit:'M⊕'},
+      {id:'m',  label:'m (masa objeto)',       min:1,   max:100,step:1,   val:10, unit:'kg'},
+    ],
+    xLabel:'r (R_tierra)', yLabel:'F (N)', xRange:[1,20],
+    fn: (r,p) => {
+      const G=6.674e-11, Mt=5.97e24, Rt=6.371e6;
+      return G*(p.M*Mt)*p.m / ((r*Rt)*(r*Rt));
+    },
+    eq: 'F = GM·m / r²   (1/r²)',
+    color:'#bc8cff',
+    tableX: [1,2,3,5,7,10,15,20],
+    extraInfo: (p) => {
+      const G=6.674e-11,Mt=5.97e24,Rt=6.371e6;
+      const g_sup = (G*p.M*Mt/(Rt*Rt)).toFixed(2);
+      return `g en superficie = ${g_sup} m/s²`;
+    },
+    desc:{
+      title:'Ley de Gravitación Universal — Caída 1/r²',
+      text:`La fuerza gravitacional disminuye con el cuadrado de la distancia al centro del planeta. A r=1 (superficie) obtienes el peso habitual. A r=2 (el doble de distancia), la fuerza es ¼. La ISS orbita a r≈1.06 R_tierra — la gravedad ahí es ~88% de la superficie, no cero. Los astronautas flotan porque están en <em>caída libre</em>, no porque no haya gravedad.`,
+    }
+  },
+  {
+    id:'doppler', label:'Efecto Doppler', icon:'🔊',
+    params:[
+      {id:'f0',  label:'f₀ (frecuencia emisor)', min:100, max:2000,step:50, val:440, unit:'Hz'},
+      {id:'vf',  label:'v_fuente',                min:0,   max:100, step:1,  val:30,  unit:'m/s'},
+    ],
+    xLabel:'posición x (m)', yLabel:'f_obs (Hz)', xRange:[-100,100],
+    fn: (x,p) => {
+      const vs=343;
+      if(x<0) return p.f0*vs/(vs-p.vf);   // fuente acercándose
+      if(x>0) return p.f0*vs/(vs+p.vf);   // fuente alejándose
+      return p.f0;
+    },
+    eq: "f' = f₀·vs/(vs∓vf)",
+    color:'#58a6ff',
+    tableX:[-80,-60,-40,-20,-5,0,5,20,40,60,80],
+    extraInfo: (p) => {
+      const vs=343;
+      const fa=(p.f0*vs/(vs-p.vf)).toFixed(1), fl=(p.f0*vs/(vs+p.vf)).toFixed(1);
+      return `Acercándose: ${fa} Hz | Alejándose: ${fl} Hz`;
+    },
+    desc:{
+      title:'Efecto Doppler — Frecuencia Observada',
+      text:`Cuando la fuente sonora se <strong>acerca</strong> (x<0), el observador escucha una frecuencia más alta (tono agudo). Cuando se <strong>aleja</strong> (x>0), la frecuencia baja (tono grave). La discontinuidad en x=0 es el "frente de onda" en el momento de pasar. Ajusta v_fuente para ver cómo se amplía la diferencia. Si v_fuente → 343 m/s (velocidad del sonido), la frecuencia de acercamiento → ∞ (barrera del sonido).`,
+    }
+  },
+  {
+    id:'gauss', label:'Distribución Normal (Gauss)', icon:'📊',
+    params:[
+      {id:'mu',    label:'μ (media)',             min:-5, max:5,   step:0.1, val:0,   unit:''},
+      {id:'sigma', label:'σ (desviación estándar)',min:0.3,max:3,   step:0.1, val:1,   unit:''},
+    ],
+    xLabel:'x', yLabel:'P(x)', xRange:[-6,6],
+    fn: (x,p) => (1/(p.sigma*Math.sqrt(2*Math.PI)))*Math.exp(-0.5*((x-p.mu)/p.sigma)**2),
+    eq: 'P(x) = (1/σ√2π)·e^{−(x−μ)²/(2σ²)}',
+    color:'#3fb950',
+    tableX:[-3,-2,-1,0,1,2,3],
+    desc:{
+      title:'Distribución Normal de Gauss',
+      text:`La distribución más importante de la estadística. Aparece en física (distribución de velocidades moleculares de Maxwell-Boltzmann), medición de errores, notas académicas, alturas humanas, precios de activos. La <strong>media μ</strong> desplaza la campana horizontalmente. La <strong>desviación σ</strong> controla su anchura: σ pequeña = campana estrecha y alta, σ grande = campana ancha y baja. El área bajo la curva siempre es 1 (probabilidad total = 100%).`,
+    }
+  },
+  {
+    id:'maxwell', label:'Distribución de Maxwell (gases)', icon:'💨',
+    params:[
+      {id:'T',  label:'T (temperatura)', min:100, max:2000, step:50,  val:300,  unit:'K'},
+      {id:'M',  label:'M (masa molar)',  min:2,   max:32,   step:1,   val:2,    unit:'g/mol'},
+    ],
+    xLabel:'v (m/s)', yLabel:'f(v)', xRange:[0,4000],
+    fn: (v,p) => {
+      const R=8.314, m=p.M/1000;
+      const a=m/(2*R*p.T);
+      return 4*Math.PI*Math.pow(a/Math.PI,1.5)*v*v*Math.exp(-a*v*v);
+    },
+    eq: 'f(v) = 4π(m/2πkT)^{3/2}·v²·e^{−mv²/2kT}',
+    color:'#e6a817',
+    tableX:[0,200,400,600,800,1000,1200,1500,2000,2500],
+    extraInfo: (p) => {
+      const R=8.314,m=p.M/1000;
+      const vp=Math.sqrt(2*R*p.T/m).toFixed(0);
+      const vrms=Math.sqrt(3*R*p.T/m).toFixed(0);
+      return `v_más_probable=${vp} m/s | v_rms=${vrms} m/s`;
+    },
+    desc:{
+      title:'Distribución de Velocidades de Maxwell-Boltzmann',
+      text:`Las moléculas de un gas no viajan todas a la misma velocidad — siguen esta distribución. Al <strong>aumentar T</strong>, la curva se aplana y desplaza a velocidades mayores (las moléculas van más rápido). Moléculas <strong>más ligeras</strong> (H₂ vs Ar) tienen la misma energía promedio pero mayor velocidad promedio (½mv²=3/2kT → v∝1/√m). Por eso el hidrógeno escapa de la atmósfera terrestre con el tiempo, pero el argón no.`,
+    }
+  },
+  {
+    id:'bragg', label:'Difracción — Red de difracción', icon:'🌈',
+    params:[
+      {id:'lambda',label:'λ (longitud de onda)', min:380, max:780,  step:5,  val:550,  unit:'nm'},
+      {id:'d',     label:'d (espaciado red)',     min:500, max:3000, step:50, val:1000, unit:'nm'},
+    ],
+    xLabel:'θ (°)', yLabel:'Intensidad', xRange:[0,90],
+    fn: (theta,p) => {
+      const rad=theta*Math.PI/180;
+      const N=20; // número de rendijas
+      const delta=2*Math.PI*p.d*Math.sin(rad)/p.lambda;
+      if(Math.abs(delta)<1e-9) return N*N;
+      const num=Math.sin(N*delta/2), den=Math.sin(delta/2);
+      return (num/den)*(num/den);
+    },
+    eq: 'I(θ) = [sin(Nδ/2)/sin(δ/2)]²,  δ=2πd·sinθ/λ',
+    color:'#bc8cff',
+    tableX:[0,10,20,30,40,50,60,70,80,90],
+    desc:{
+      title:'Patrón de Difracción — Red de N Rendijas',
+      text:`La intensidad difractada forma <strong>picos muy agudos</strong> en los ángulos donde d·sinθ=mλ (máximos de orden m). Entre los picos principales hay N-2 mínimos secundarios. Al <strong>aumentar λ</strong> (luz roja vs azul), los picos se desplazan a ángulos mayores — por eso las redes de difracción separan colores (como un prisma, pero por interferencia). Las redes de difracción se usan en espectroscopía para identificar elementos por su espectro de emisión.`,
+    }
+  },
+];
+
+let simState = { fnId: 'mrua', params:{}, mouseX: null };
+let simInitialized = false;
+
+function initSim(){
+  if(simInitialized){ renderSim(); return; }
+  simInitialized = true;
+  // Build function bar
+  const bar = document.getElementById('simFnBar');
+  SIM_FNS.forEach(fn=>{
+    const b=document.createElement('button');
+    b.className='sim-fn-btn'+(fn.id===simState.fnId?' on':'');
+    b.innerHTML=`${fn.icon} ${fn.label}`;
+    b.onclick=()=>{ simState.fnId=fn.id; renderSim(); };
+    bar.appendChild(b);
+  });
+  renderSim();
+  // Mouse tracking on canvas
+  const canvas=document.getElementById('simCanvas');
+  canvas.addEventListener('mousemove', e=>{
+    const rect=canvas.getBoundingClientRect();
+    const px=(e.clientX-rect.left)*(canvas.width/rect.width);
+    simState.mouseX=px;
+    drawSim(getSimFn(), getSimParams());
+  });
+  canvas.addEventListener('mouseleave',()=>{
+    simState.mouseX=null;
+    drawSim(getSimFn(), getSimParams());
+  });
+}
+
+function getSimFn(){ return SIM_FNS.find(f=>f.id===simState.fnId)||SIM_FNS[0]; }
+
+function getSimParams(){
+  const fn=getSimFn(), p={};
+  fn.params.forEach(param=>{ p[param.id]=simState.params[fn.id]?.[param.id]??param.val; });
+  return p;
+}
+
+function renderSim(){
+  const fn=getSimFn();
+  // Highlight active fn button
+  document.querySelectorAll('.sim-fn-btn').forEach(b=>{
+    b.classList.toggle('on', b.textContent.includes(fn.label));
+  });
+  const p=getSimParams();
+  buildSimControls(fn,p);
+  drawSim(fn,p);
+  buildSimDesc(fn);
+  buildSimTable(fn,p);
+}
+
+function buildSimControls(fn,p){
+  const ctrl=document.getElementById('simControls'); if(!ctrl)return;
+  ctrl.innerHTML=`<div class="sim-fn-eq">${fn.eq}</div>`;
+  if(fn.legend){
+    ctrl.innerHTML+=`<div class="sim-checkpoint">${fn.legend.map(l=>`<span class="sim-cp">${l}</span>`).join('')}</div>`;
+  }
+  fn.params.forEach(param=>{
+    const val=p[param.id];
+    const d=document.createElement('div'); d.className='sim-ctrl';
+    d.innerHTML=`
+      <div class="sim-ctrl-label">
+        <span class="sim-ctrl-name">${param.label}</span>
+        <span class="sim-ctrl-val" id="sv_${fn.id}_${param.id}">${val} ${param.unit}</span>
+      </div>
+      <input type="range" class="sim-range" min="${param.min}" max="${param.max}" step="${param.step}" value="${val}"
+        oninput="simSetParam('${fn.id}','${param.id}',this.value)">`;
+    ctrl.appendChild(d);
+  });
+  if(fn.extraInfo){
+    const info=document.createElement('div');
+    info.id='simExtraInfo';
+    info.style.cssText='font-family:var(--mn);font-size:.72rem;color:var(--cd);background:var(--sf2);border-radius:6px;padding:7px 12px;margin-top:2px';
+    info.textContent=fn.extraInfo(p);
+    ctrl.appendChild(info);
+  }
+  const resetBtn=document.createElement('button');
+  resetBtn.className='sim-reset'; resetBtn.textContent='⟳ Valores por defecto';
+  resetBtn.onclick=()=>{ if(simState.params[fn.id]) delete simState.params[fn.id]; renderSim(); };
+  ctrl.appendChild(resetBtn);
+}
+
+function simSetParam(fnId,paramId,rawVal){
+  if(!simState.params[fnId]) simState.params[fnId]={};
+  const fn=SIM_FNS.find(f=>f.id===fnId);
+  const param=fn.params.find(p=>p.id===paramId);
+  const val=parseFloat(rawVal);
+  simState.params[fnId][paramId]=val;
+  const vEl=document.getElementById(`sv_${fnId}_${paramId}`);
+  if(vEl) vEl.textContent=`${val} ${param.unit}`;
+  const p=getSimParams();
+  drawSim(fn,p);
+  buildSimTable(fn,p);
+  if(fn.extraInfo){
+    const infoEl=document.getElementById('simExtraInfo');
+    if(infoEl) infoEl.textContent=fn.extraInfo(p);
+  }
+}
+
+function buildSimDesc(fn){
+  const el=document.getElementById('simDesc'); if(!el||!fn.desc)return;
+  el.innerHTML=`<h4>${fn.desc.title}</h4><p>${fn.desc.text}</p>`;
+}
+
+function buildSimTable(fn,p){
+  const tbl=document.getElementById('simTable'); if(!tbl)return;
+  const xs=fn.tableX||[];
+  let html=`<tr><th>${fn.xLabel}</th>`;
+  if(fn.fn2&&fn.fn_b){
+    if(fn.fn_c) html+=`<th>y (suma)</th><th>y₁</th><th>y₂</th>`;
+    else html+=`<th style="color:#f85149">Ep (J)</th><th style="color:#3fb950">Ec (J)</th><th>E_total (J)</th>`;
+  } else {
+    html+=`<th>${fn.yLabel}</th>`;
+  }
+  html+='</tr>';
+  xs.forEach(x=>{
+    const y=fn.fn(x,p);
+    const yClip=fn.clipNeg&&y<0?null:y;
+    let row=`<tr><td>${x}</td>`;
+    if(fn.fn2&&fn.fn_b){
+      const yb=fn.fn_b(x,p);
+      if(fn.fn_c){const yc=fn.fn_c(x,p);row+=`<td>${fmt(y)}</td><td>${fmt(yb)}</td><td>${fmt(yc)}</td>`;}
+      else{const tot=y+yb;row+=`<td>${fmt(y)}</td><td>${fmt(yb)}</td><td>${fmt(tot)}</td>`;}
+    } else {
+      row+=`<td>${yClip===null?'—':fmt(yClip)}</td>`;
+    }
+    html+=row+'</tr>';
+  });
+  tbl.innerHTML=html;
+}
+
+function fmt(v){ if(!isFinite(v))return '—'; const a=Math.abs(v); if(a===0)return '0'; if(a>1e5||a<0.0001)return v.toExponential(3); return parseFloat(v.toFixed(4)).toString(); }
+
+function drawSim(fn,p){
+  const canvas=document.getElementById('simCanvas'); if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height;
+  const PAD={top:30,right:20,bottom:50,left:68};
+  const pw=W-PAD.left-PAD.right, ph=H-PAD.top-PAD.bottom;
+
+  // Compute data
+  const [xmin,xmax]=fn.xRange;
+  const steps=400;
+  const dx=(xmax-xmin)/steps;
+  const ys=[];
+  for(let i=0;i<=steps;i++){
+    const x=xmin+i*dx;
+    let y=fn.fn(x,p);
+    if(fn.clipNeg&&y<0) y=NaN;
+    ys.push(y);
+  }
+  let ysB=null, ysC=null;
+  if(fn.fn2&&fn.fn_b){
+    ysB=[]; for(let i=0;i<=steps;i++) ysB.push(fn.fn_b(xmin+i*dx,p));
+  }
+  if(fn.fn_c){
+    ysC=[]; for(let i=0;i<=steps;i++) ysC.push(fn.fn_c(xmin+i*dx,p));
+  }
+
+  // Y range
+  const allY=[...ys,...(ysB||[]),...(ysC||[])].filter(v=>isFinite(v)&&!isNaN(v));
+  let ymin=Math.min(...allY), ymax=Math.max(...allY);
+  if(ymin===ymax){ymin-=1;ymax+=1;}
+  const ypad=(ymax-ymin)*0.1; ymin-=ypad; ymax+=ypad;
+
+  const toCanX=x=>PAD.left+(x-xmin)/(xmax-xmin)*pw;
+  const toCanY=y=>PAD.top+(ymax-y)/(ymax-ymin)*ph;
+
+  // Clear
+  ctx.fillStyle='#0d1117'; ctx.fillRect(0,0,W,H);
+
+  // Grid
+  ctx.strokeStyle='rgba(48,54,61,0.7)'; ctx.lineWidth=1;
+  const nGridX=8, nGridY=6;
+  for(let i=0;i<=nGridX;i++){
+    const x=toCanX(xmin+i*(xmax-xmin)/nGridX);
+    ctx.beginPath(); ctx.moveTo(x,PAD.top); ctx.lineTo(x,PAD.top+ph); ctx.stroke();
+  }
+  for(let i=0;i<=nGridY;i++){
+    const y=toCanY(ymin+i*(ymax-ymin)/nGridY);
+    ctx.beginPath(); ctx.moveTo(PAD.left,y); ctx.lineTo(PAD.left+pw,y); ctx.stroke();
+  }
+
+  // Axes
+  ctx.strokeStyle='rgba(240,230,211,0.25)'; ctx.lineWidth=1.5;
+  // X axis
+  if(ymin<=0&&ymax>=0){
+    const y0=toCanY(0);
+    ctx.beginPath(); ctx.moveTo(PAD.left,y0); ctx.lineTo(PAD.left+pw,y0); ctx.stroke();
+  }
+  // Y axis
+  if(xmin<=0&&xmax>=0){
+    const x0=toCanX(0);
+    ctx.beginPath(); ctx.moveTo(x0,PAD.top); ctx.lineTo(x0,PAD.top+ph); ctx.stroke();
+  }
+
+  // Axis labels
+  ctx.fillStyle='#b8a898'; ctx.font='12px JetBrains Mono,monospace'; ctx.textAlign='center';
+  for(let i=0;i<=nGridX;i++){
+    const xv=xmin+i*(xmax-xmin)/nGridX;
+    ctx.fillText(fmtAxis(xv), toCanX(xv), PAD.top+ph+18);
+  }
+  ctx.textAlign='right';
+  for(let i=0;i<=nGridY;i++){
+    const yv=ymin+i*(ymax-ymin)/nGridY;
+    ctx.fillText(fmtAxis(yv), PAD.left-8, toCanY(yv)+4);
+  }
+
+  // Axis titles
+  ctx.fillStyle='#e6a817'; ctx.font='bold 11px JetBrains Mono,monospace';
+  ctx.textAlign='center';
+  ctx.fillText(fn.xLabel, PAD.left+pw/2, H-6);
+  ctx.save(); ctx.translate(14, PAD.top+ph/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText(fn.yLabel, 0, 0); ctx.restore();
+
+  // Helper: draw curve
+  function drawCurve(data, color, lineW=2.5){
+    ctx.strokeStyle=color; ctx.lineWidth=lineW;
+    ctx.beginPath(); let penDown=false;
+    for(let i=0;i<=steps;i++){
+      const y=data[i];
+      if(!isFinite(y)||isNaN(y)){penDown=false;continue;}
+      const cx=toCanX(xmin+i*dx), cy=toCanY(y);
+      if(!penDown){ctx.moveTo(cx,cy);penDown=true;}else{ctx.lineTo(cx,cy);}
+    }
+    ctx.stroke();
+  }
+
+  if(ysC) drawCurve(ysC, fn.colorC||'rgba(63,185,80,0.5)', 1.5);
+  if(ysB) drawCurve(ysB, fn.colorB||'rgba(88,166,255,0.5)', 1.5);
+  drawCurve(ys, fn.color, 2.5);
+
+  // Mouse tooltip
+  if(simState.mouseX!==null){
+    const mouseXpx=simState.mouseX;
+    if(mouseXpx>=PAD.left&&mouseXpx<=PAD.left+pw){
+      const xv=xmin+(mouseXpx-PAD.left)/pw*(xmax-xmin);
+      const yv=fn.fn(xv,p);
+      if(isFinite(yv)&&!isNaN(yv)){
+        const cx=mouseXpx, cy=toCanY(yv);
+        // vertical line
+        ctx.strokeStyle='rgba(230,168,23,0.35)'; ctx.lineWidth=1;
+        ctx.setLineDash([4,4]);
+        ctx.beginPath(); ctx.moveTo(cx,PAD.top); ctx.lineTo(cx,PAD.top+ph); ctx.stroke();
+        ctx.setLineDash([]);
+        // dot
+        ctx.fillStyle=fn.color; ctx.beginPath(); ctx.arc(cx,cy,5,0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();
+        // tooltip
+        const lbl=`(${fmtAxis(xv)}, ${fmtAxis(yv)})`;
+        ctx.font='12px JetBrains Mono,monospace'; ctx.textAlign='left';
+        const tw=ctx.measureText(lbl).width+16;
+        let tx=cx+8, ty=cy-28;
+        if(tx+tw>W-10) tx=cx-tw-8;
+        if(ty<PAD.top+4) ty=cy+18;
+        ctx.fillStyle='rgba(22,27,34,0.95)'; ctx.strokeStyle=fn.color;
+        ctx.lineWidth=1; ctx.beginPath();
+        ctx.roundRect(tx,ty,tw,22,4); ctx.fill(); ctx.stroke();
+        ctx.fillStyle=fn.color; ctx.fillText(lbl,tx+8,ty+15);
+        // coords display
+        const coordsEl=document.getElementById('simCoords');
+        if(coordsEl) coordsEl.textContent=`${fn.xLabel}=${fmtAxis(xv)}  ${fn.yLabel}=${fmtAxis(yv)}`;
+      }
+    }
+  } else {
+    const coordsEl=document.getElementById('simCoords');
+    if(coordsEl) coordsEl.textContent='Mueve el cursor sobre la gráfica';
+  }
+}
+
+function fmtAxis(v){
+  if(!isFinite(v)) return '';
+  const a=Math.abs(v);
+  if(a===0) return '0';
+  if(a>=10000||a<0.001) return v.toExponential(1);
+  if(a>=100) return Math.round(v).toString();
+  if(a>=10) return parseFloat(v.toFixed(1)).toString();
+  return parseFloat(v.toFixed(2)).toString();
+}
+
+// Redraw on window resize (debounced)
+window.addEventListener('resize', (()=>{
+  let t; return ()=>{ clearTimeout(t); t=setTimeout(()=>{ if(simInitialized) drawSim(getSimFn(),getSimParams()); },150); };
+})());
 
 // ================================================================
 // BIBLIOTECA — RENDER
