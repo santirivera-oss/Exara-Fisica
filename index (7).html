@@ -1,0 +1,1839 @@
+<!DOCTYPE html>
+<!--
+================================================================================
+  CALCULADORA DIDÁCTICA v2.0 — Física & Matemáticas · Exara Studio
+================================================================================
+FLUJO EDUCATIVO:
+  1. La app presenta el problema con los DATOS YA DADOS.
+  2. El alumno resuelve EN PAPEL usando la fórmula mostrada.
+  3. Escribe su resultado y presiona "Verificar".
+  4. Si falla → pistas progresivas que enseñan el MÉTODO (no la respuesta).
+  5. Al acertar → los pasos se revelan automáticamente para reforzar.
+
+EXTENDER A ML (TensorFlow.js):
+  - Reemplaza Adaptive.score() con model.predict()
+  - Entradas [5]: [pct_correctos, intentos_prom, tiempo_prom, nivel_id, tema_id]
+  - Salidas [3]: softmax → [bajar, mantener, subir]
+  - Guarda: model.save('localstorage://calc-ml')
+================================================================================
+-->
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora Didáctica — Física y Matemáticas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300&family=JetBrains+Mono:wght@400;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js" defer></script>
+<style>
+:root{--bg:#0d1117;--sf:#161b22;--sf2:#21262d;--br:#30363d;--am:#e6a817;--ad:#9a6f0e;--cr:#f0e6d3;--cd:#b8a898;--gn:#3fb950;--rd:#f85149;--bl:#58a6ff;--pu:#bc8cff;--r:10px;--mn:'JetBrains Mono',monospace;--se:'Instrument Serif',serif;--bd:'Crimson Pro',serif}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--cr);font-family:var(--bd);font-size:18px;line-height:1.6;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:.5}
+.app{max-width:1100px;margin:0 auto;padding:24px 20px;position:relative;z-index:1}
+header{display:flex;align-items:center;gap:16px;margin-bottom:32px;border-bottom:1px solid var(--br);padding-bottom:20px}
+.logo{width:48px;height:48px;background:linear-gradient(135deg,var(--am),#c47f00);border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:var(--mn);font-weight:600;font-size:20px;color:#000;flex-shrink:0;box-shadow:0 0 20px rgba(230,168,23,.25)}
+.ht h1{font-family:var(--se);font-size:1.6rem;color:var(--cr);font-weight:normal;line-height:1.2}
+.ht p{font-size:.85rem;color:var(--cd);font-family:var(--mn);letter-spacing:.03em}
+header .ha{margin-left:auto}
+.grid{display:grid;grid-template-columns:270px 1fr;gap:20px}
+@media(max-width:768px){.grid{grid-template-columns:1fr}}
+.sb{display:flex;flex-direction:column;gap:16px}
+.panel{background:var(--sf);border:1px solid var(--br);border-radius:var(--r);padding:18px}
+.pt{font-family:var(--mn);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--am);margin-bottom:14px;display:flex;align-items:center;gap:6px}
+.pt::before{content:'';display:inline-block;width:6px;height:6px;background:var(--am);border-radius:50%}
+.lvls{display:flex;flex-direction:column;gap:6px}
+.lv{background:var(--sf2);border:1px solid var(--br);color:var(--cd);font-family:var(--bd);font-size:.95rem;padding:10px 14px;border-radius:6px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px;transition:all .2s}
+.lv:hover{border-color:var(--ad);color:var(--cr)}.lv.on{background:rgba(230,168,23,.12);border-color:var(--am);color:var(--am)}
+.lv .badge{font-family:var(--mn);font-size:.65rem;padding:2px 6px;border-radius:4px;background:var(--br);color:var(--cd);margin-left:auto}
+.tlist{display:flex;flex-direction:column;gap:4px}
+.ti{padding:8px 12px;border-radius:6px;cursor:pointer;font-size:.9rem;color:var(--cd);border:1px solid transparent;transition:all .15s;display:flex;align-items:center;gap:8px}
+.ti:hover{background:var(--sf2);color:var(--cr)}.ti.on{background:rgba(88,166,255,.1);border-color:rgba(88,166,255,.3);color:var(--bl)}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sbox{background:var(--sf2);border:1px solid var(--br);border-radius:6px;padding:10px;text-align:center}
+.sv{font-family:var(--mn);font-size:1.4rem;font-weight:600;color:var(--am)}
+.sl{font-size:.7rem;color:var(--cd);letter-spacing:.04em;text-transform:uppercase;margin-top:2px}
+.pbw{margin-top:12px}.pbl{display:flex;justify-content:space-between;font-size:.8rem;color:var(--cd);margin-bottom:4px}
+.pb{height:6px;background:var(--sf2);border-radius:10px;overflow:hidden}
+.pbf{height:100%;background:linear-gradient(90deg,var(--ad),var(--am));border-radius:10px;transition:width .5s}
+.ast{background:var(--sf2);border:1px solid var(--br);border-radius:6px;padding:10px 12px;font-size:.82rem;color:var(--cd);margin-top:10px;line-height:1.4}
+.ast strong{color:var(--bl)}
+.mc{display:flex;flex-direction:column;gap:16px}
+/* lesson */
+.lcard{background:var(--sf);border:1px solid var(--br);border-radius:var(--r);padding:20px;border-left:3px solid var(--bl)}
+.lcard h2{font-family:var(--se);font-size:1.25rem;color:var(--cr);margin-bottom:8px}
+.cpt{color:var(--cd);font-size:.95rem;line-height:1.7}
+.fbox{background:var(--sf2);border:1px solid var(--br);border-radius:6px;padding:10px 14px;margin-top:10px;font-family:var(--mn);font-size:.9rem;color:var(--am)}
+/* problem */
+.pcard{background:var(--sf);border:1px solid var(--br);border-radius:var(--r);padding:20px}
+.plbl{font-family:var(--mn);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--am);margin-bottom:12px}
+.pq{font-family:var(--se);font-size:1.12rem;color:var(--cr);line-height:1.7;margin-bottom:16px;white-space:pre-line}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.chip{background:var(--sf2);border:1px solid var(--br);border-radius:6px;padding:6px 14px;font-family:var(--mn);font-size:.88rem;color:var(--am)}
+.chip span{color:var(--cd);font-size:.78rem;margin-left:4px}
+.clbl{font-family:var(--mn);font-size:.68rem;color:var(--cd);text-transform:uppercase;letter-spacing:.08em;width:100%;margin-bottom:4px}
+/* answer */
+.az{background:rgba(88,166,255,.04);border:1px dashed rgba(88,166,255,.3);border-radius:8px;padding:16px 18px;margin-bottom:14px}
+.albl{font-family:var(--mn);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--bl);margin-bottom:10px}
+.ar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ai{background:var(--sf2);border:2px solid var(--br);color:var(--cr);font-family:var(--mn);font-size:1.1rem;padding:10px 14px;border-radius:8px;outline:none;transition:border-color .2s;width:180px}
+.ai:focus{border-color:var(--bl)}.ai.ok{border-color:var(--gn)!important;background:rgba(63,185,80,.06)}.ai.no{border-color:var(--rd)!important;background:rgba(248,81,73,.06)}
+.au{font-family:var(--mn);font-size:.9rem;color:var(--cd)}
+.asub{font-size:.82rem;color:var(--cd);margin-top:8px;font-style:italic}
+/* btns */
+.btn{font-family:var(--mn);font-size:.8rem;font-weight:600;letter-spacing:.05em;padding:9px 18px;border-radius:6px;border:1px solid transparent;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.bp{background:var(--am);color:#000;border-color:var(--am)}.bp:hover{background:#d4960a}
+.bg{background:transparent;border-color:var(--br);color:var(--cd)}.bg:hover{border-color:var(--ad);color:var(--cr)}
+.bh{background:rgba(88,166,255,.12);border-color:rgba(88,166,255,.3);color:var(--bl)}.bh:hover{background:rgba(88,166,255,.2)}.bh:disabled{opacity:.35;cursor:not-allowed}
+.bs{background:rgba(188,140,255,.1);border-color:rgba(188,140,255,.3);color:var(--pu)}.bs:hover{background:rgba(188,140,255,.2)}
+.bn{background:rgba(63,185,80,.1);border-color:rgba(63,185,80,.3);color:var(--gn)}.bn:hover{background:rgba(63,185,80,.2)}
+.arow{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+/* feedback */
+.fb{border-radius:8px;padding:14px 16px;display:none;margin-top:10px}
+.fb.show{display:block}.fb.ok{border:1px solid rgba(63,185,80,.5);background:rgba(63,185,80,.06)}.fb.no{border:1px solid rgba(248,81,73,.5);background:rgba(248,81,73,.06)}
+.fbt{font-family:var(--mn);font-size:.82rem;font-weight:600;margin-bottom:4px}
+.fb.ok .fbt{color:var(--gn)}.fb.no .fbt{color:var(--rd)}.fbm{font-size:.9rem;color:var(--cd)}
+/* hints */
+.hb{display:none;background:rgba(88,166,255,.06);border:1px solid rgba(88,166,255,.22);border-radius:8px;padding:14px 16px;font-size:.9rem;color:var(--cr);line-height:1.6;margin-top:8px}
+.hb.show{display:block}.hl{font-family:var(--mn);font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--bl);margin-bottom:8px}
+/* steps */
+.stps{background:var(--sf2);border:1px solid var(--br);border-radius:8px;padding:18px;margin-top:10px;display:none}
+.stps.show{display:block}
+.stps h4{font-family:var(--mn);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--pu);margin-bottom:14px}
+.si{display:flex;gap:14px;padding:10px 0;border-bottom:1px solid var(--br)}.si:last-child{border-bottom:none}
+.sn{font-family:var(--mn);font-size:.75rem;color:var(--am);font-weight:600;min-width:26px;padding-top:2px}
+.sb2{font-size:.92rem;color:var(--cr);line-height:1.6}
+.st{margin-bottom:3px}
+.sm{font-family:var(--mn);font-size:.86rem;color:var(--am);margin-top:4px;padding:5px 10px;background:rgba(230,168,23,.08);border-radius:4px;display:inline-block}
+.ar2{margin-top:12px;padding:10px 14px;background:rgba(230,168,23,.07);border-radius:6px;font-family:var(--mn);font-size:.85rem;color:var(--am)}
+/* plot */
+.plot{background:var(--sf);border:1px solid var(--br);border-radius:var(--r);padding:16px;display:none}
+.plot.show{display:block}.plot h3{font-family:var(--mn);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--am);margin-bottom:12px}
+#pC{width:100%;height:280px}
+/* suggest */
+.sug{display:none;background:rgba(63,185,80,.07);border:1px solid rgba(63,185,80,.28);border-radius:8px;padding:12px 16px;font-size:.88rem;color:var(--gn);margin-top:10px}
+.sug.show{display:block}.sug strong{display:block;font-family:var(--mn);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+/* history */
+.hist{background:var(--sf);border:1px solid var(--br);border-radius:var(--r);padding:18px;margin-top:20px}
+.hl2{display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;margin-top:10px}
+.hi{display:flex;align-items:center;gap:10px;background:var(--sf2);border-radius:6px;padding:8px 12px;font-size:.82rem}
+.hd{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.hi.ok .hd{background:var(--gn)}.hi.no .hd{background:var(--rd)}
+.htx{flex:1;color:var(--cd)}.hbg{font-family:var(--mn);font-size:.65rem;padding:2px 6px;border-radius:4px;background:var(--br);color:var(--cd)}
+/* ---- TABS NAV ---- */
+.tab-nav{display:flex;gap:4px;background:var(--sf2);border:1px solid var(--br);border-radius:8px;padding:3px}
+.tab-btn{font-family:var(--mn);font-size:.75rem;letter-spacing:.06em;padding:6px 14px;border-radius:5px;border:none;cursor:pointer;background:transparent;color:var(--cd);transition:all .2s}
+.tab-btn:hover{color:var(--cr)}.tab-btn.on{background:var(--am);color:#000;font-weight:600}
+/* ---- BIBLIOTECA ---- */
+#sec-biblioteca{display:none}
+#sec-ejercicios{display:block}
+/* Top nav biblioteca */
+.bib-nav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px}
+.bib-tab{font-family:var(--mn);font-size:.75rem;padding:7px 16px;border-radius:20px;border:1px solid var(--br);background:var(--sf2);color:var(--cd);cursor:pointer;transition:all .2s}
+.bib-tab:hover{border-color:var(--ad);color:var(--cr)}.bib-tab.on{background:rgba(230,168,23,.15);border-color:var(--am);color:var(--am)}
+/* Nivel pills */
+.lv-pills{display:flex;gap:6px;margin-bottom:20px}
+.lv-pill{font-family:var(--mn);font-size:.68rem;padding:4px 12px;border-radius:10px;border:1px solid var(--br);background:var(--sf2);color:var(--cd);cursor:pointer;transition:all .15s}
+.lv-pill:hover{border-color:var(--bl)}.lv-pill.on{background:rgba(88,166,255,.15);border-color:var(--bl);color:var(--bl)}
+/* Teoria card */
+.teoria{background:var(--sf);border:1px solid var(--br);border-radius:var(--r);overflow:hidden;margin-bottom:16px}
+.teoria-head{padding:16px 20px;border-bottom:1px solid var(--br);display:flex;align-items:center;gap:10px}
+.teoria-icon{font-size:1.4rem}
+.teoria-head h3{font-family:var(--se);font-size:1.1rem;color:var(--cr)}
+.teoria-head .nivel-badge{font-family:var(--mn);font-size:.62rem;padding:2px 8px;border-radius:10px;margin-left:auto}
+.nivel-badge.basic{background:rgba(63,185,80,.15);color:var(--gn);border:1px solid rgba(63,185,80,.3)}
+.nivel-badge.intermediate{background:rgba(88,166,255,.15);color:var(--bl);border:1px solid rgba(88,166,255,.3)}
+.nivel-badge.advanced{background:rgba(188,140,255,.15);color:var(--pu);border:1px solid rgba(188,140,255,.3)}
+.teoria-body{padding:18px 20px;display:flex;flex-direction:column;gap:14px}
+.teoria-text{font-size:.95rem;color:var(--cd);line-height:1.75}
+.teoria-text strong{color:var(--cr)}
+/* Formula strip */
+.fstrip{display:flex;flex-wrap:wrap;gap:8px}
+.fchip{background:var(--sf2);border:1px solid rgba(230,168,23,.35);border-radius:6px;padding:7px 14px;font-family:var(--mn);font-size:.82rem;color:var(--am)}
+/* Ejemplo real */
+.ejemplo{background:rgba(88,166,255,.05);border:1px solid rgba(88,166,255,.2);border-radius:8px;padding:14px 16px}
+.ejemplo-lbl{font-family:var(--mn);font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--bl);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.ejemplo-lbl::before{content:'🌍'}
+.ejemplo-text{font-size:.9rem;color:var(--cr);line-height:1.65}
+/* Actividad */
+.actividad{background:rgba(188,140,255,.05);border:1px solid rgba(188,140,255,.25);border-radius:8px;padding:14px 16px}
+.act-lbl{font-family:var(--mn);font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--pu);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.act-lbl::before{content:'🎯'}
+.act-text{font-size:.9rem;color:var(--cr);line-height:1.65;margin-bottom:10px}
+.act-dato{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.act-chip{background:var(--sf2);border:1px solid var(--br);border-radius:5px;padding:4px 10px;font-family:var(--mn);font-size:.8rem;color:var(--am)}
+.act-resp{background:var(--sf2);border:1px solid rgba(188,140,255,.3);border-radius:6px;padding:10px 14px;font-family:var(--mn);font-size:.82rem;display:none}
+.act-resp.show{display:block;color:var(--pu)}
+.btn-reveal{font-family:var(--mn);font-size:.72rem;padding:5px 12px;border-radius:5px;border:1px solid rgba(188,140,255,.3);background:transparent;color:var(--pu);cursor:pointer;transition:all .15s}
+.btn-reveal:hover{background:rgba(188,140,255,.1)}
+/* Dato curioso */
+.curiosidad{background:rgba(230,168,23,.05);border:1px solid rgba(230,168,23,.2);border-radius:8px;padding:12px 16px;font-size:.88rem;color:var(--cd);line-height:1.6}
+.cur-lbl{font-family:var(--mn);font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--am);margin-bottom:6px}
+.cur-lbl::before{content:'💡 '}
+/* TTS */
+.tts-btn{margin-left:auto;background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.3);color:var(--bl);font-size:.78rem;padding:4px 12px;border-radius:6px;cursor:pointer;font-family:var(--mn);transition:all .15s;white-space:nowrap}
+.tts-btn:hover{background:rgba(88,166,255,.2)}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--sf);border:1px solid var(--br);border-radius:10px;padding:14px 20px;font-size:.88rem;color:var(--cr);box-shadow:0 8px 30px rgba(0,0,0,.5);transform:translateY(80px);opacity:0;transition:all .35s cubic-bezier(.34,1.56,.64,1);z-index:999;max-width:300px}
+.toast.on{transform:translateY(0);opacity:1}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--sf)}::-webkit-scrollbar-thumb{background:var(--br);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo" aria-hidden="true">∑</div>
+    <div class="ht">
+      <h1>Calculadora Didáctica</h1>
+      <p>Física &amp; Matemáticas · Tú resuelves, la app te guía</p>
+    </div>
+    <div class="ha" style="display:flex;align-items:center;gap:10px">
+      <nav class="tab-nav" aria-label="Secciones">
+        <button class="tab-btn on" onclick="switchTab('ejercicios')" id="tab-ejercicios">⚡ Ejercicios</button>
+        <button class="tab-btn"    onclick="switchTab('biblioteca')" id="tab-biblioteca">📚 Biblioteca</button>
+      </nav>
+      <button class="btn bg" onclick="clearAll()">⟳ Reiniciar</button>
+    </div>
+  </header>
+<!-- ======================================================
+     SECCIÓN: EJERCICIOS (contenido original)
+====================================================== -->
+<div id="sec-ejercicios">
+  <div class="grid">
+    <aside class="sb">
+      <div class="panel">
+        <div class="pt">Nivel</div>
+        <div class="lvls">
+          <button class="lv on" data-lv="basic"        onclick="setLv('basic')">◎ Básico <span class="badge">1°</span></button>
+          <button class="lv"    data-lv="intermediate" onclick="setLv('intermediate')">◎ Intermedio <span class="badge">2°</span></button>
+          <button class="lv"    data-lv="advanced"     onclick="setLv('advanced')">◎ Avanzado <span class="badge">3°</span></button>
+        </div>
+      </div>
+      <div class="panel"><div class="pt">Tema</div><div class="tlist" id="tList"></div></div>
+      <div class="panel">
+        <div class="pt">Tu Progreso</div>
+        <div class="sgrid">
+          <div class="sbox"><div class="sv" id="sAcc">—</div><div class="sl">Precisión</div></div>
+          <div class="sbox"><div class="sv" id="sAtt">—</div><div class="sl">Intentos</div></div>
+          <div class="sbox"><div class="sv" id="sTim">—</div><div class="sl">T. Medio</div></div>
+          <div class="sbox"><div class="sv" id="sSco">0</div><div class="sl">Score</div></div>
+        </div>
+        <div class="pbw">
+          <div class="pbl"><span>Dominio</span><span id="mPct">0%</span></div>
+          <div class="pb"><div class="pbf" id="mBar" style="width:0%"></div></div>
+        </div>
+        <div class="ast" id="adSt">Completa ejercicios para activar el ajuste de dificultad.</div>
+      </div>
+    </aside>
+    <main class="mc" id="main"></main>
+  </div>
+  <div class="hist">
+    <div class="pt">Historial</div>
+    <div class="hl2" id="hList"><p style="color:var(--cd);font-size:.85rem;">Sin actividad aún.</p></div>
+  </div>
+</div><!-- /sec-ejercicios -->
+
+<!-- ======================================================
+     SECCIÓN: BIBLIOTECA — Teoría · Ejemplos · Actividades
+====================================================== -->
+<div id="sec-biblioteca">
+  <div style="margin-bottom:20px">
+    <!-- Selector de tema de biblioteca -->
+    <div class="bib-nav" id="bibNav"></div>
+    <!-- Selector de nivel -->
+    <div class="lv-pills">
+      <button class="lv-pill on" onclick="setBibLv('basic')"        id="bpill-basic">◎ Básico</button>
+      <button class="lv-pill"    onclick="setBibLv('intermediate')" id="bpill-intermediate">◎ Intermedio</button>
+      <button class="lv-pill"    onclick="setBibLv('advanced')"     id="bpill-advanced">◎ Avanzado</button>
+    </div>
+    <!-- Contenido de la biblioteca -->
+    <div id="bibContent"></div>
+  </div>
+</div><!-- /sec-biblioteca -->
+</div><!-- /app -->
+<div class="toast" id="toast" role="alert" aria-live="polite"></div>
+<script>
+// ================================================================
+// BASE DE DATOS DE EJERCICIOS
+// Los datos están DADOS. El alumno calcula y escribe su respuesta.
+// ================================================================
+const DB = {
+  velocity:{label:'Velocidad',icon:'→',levels:{
+    basic:[
+      {id:'vb1',title:'Velocidad media',
+       concept:'La velocidad media es la distancia recorrida dividida entre el tiempo empleado. Cuanto más distancia en menos tiempo, mayor es la velocidad.',
+       formula:'v = d / t',
+       gen:()=>({d:Math.round(Math.random()*400+50),t:parseFloat((Math.random()*25+2).toFixed(1))}),
+       question:d=>`Un corredor recorre <strong>${d.d} metros</strong> en <strong>${d.t} segundos</strong>. ¿Cuál es su velocidad media?`,
+       chips:d=>[['d',d.d,'m'],['t',d.t,'s']],
+       answer:d=>d.d/d.t, unit:'m/s', tol:0.01,
+       steps:d=>{const r=(d.d/d.t).toFixed(3);return[
+         {t:'Escribe los datos dados.',m:`d = ${d.d} m   |   t = ${d.t} s`},
+         {t:'Fórmula de velocidad media.',m:'v = d / t'},
+         {t:'Sustituye los valores en la fórmula.',m:`v = ${d.d} / ${d.t}`},
+         {t:'Realiza la división.',m:`v = ${r} m/s`}]},
+       hints:['La fórmula es **v = d / t**. Divide la distancia entre el tiempo.',
+              'Sustituye directamente: v = {d} / {t}. Ahora haz la división en papel.',
+              'Solución: v = {d} / {t} = {r} m/s']},
+      {id:'vb2',title:'Tiempo de viaje',
+       concept:'Si conocemos velocidad y distancia, despejamos t de la fórmula v=d/t. A mayor velocidad, menos tiempo se tarda en recorrer la misma distancia.',
+       formula:'t = d / v',
+       gen:()=>({v:Math.round(Math.random()*20+5),d:Math.round(Math.random()*300+50)}),
+       question:d=>`Un ciclista viaja a <strong>${d.v} m/s</strong> y debe recorrer <strong>${d.d} metros</strong>. ¿Cuánto tiempo tardará?`,
+       chips:d=>[['v',d.v,'m/s'],['d',d.d,'m']],
+       answer:d=>d.d/d.v, unit:'s', tol:0.01,
+       steps:d=>{const r=(d.d/d.v).toFixed(3);return[
+         {t:'Datos conocidos.',m:`v = ${d.v} m/s   |   d = ${d.d} m`},
+         {t:'Despeja t de la fórmula base v = d/t.',m:'v = d/t   →   t = d / v'},
+         {t:'Sustituye.',m:`t = ${d.d} / ${d.v}`},
+         {t:'Resultado.',m:`t = ${r} s`}]},
+       hints:['Despeja t de v = d/t: **t = d / v**. Divide distancia entre velocidad.',
+              'Sustituye: t = {d} / {v}. Solo divide los dos números.',
+              'Solución: t = {d} / {v} = {r} s']},
+    ],
+    intermediate:[
+      {id:'vi1',title:'Velocidad relativa',
+       concept:'La velocidad relativa depende del sentido de movimiento: si van en el mismo sentido se restan las velocidades; si van en sentidos opuestos se suman.',
+       formula:'v_rel = |v₁−v₂| (mismo sentido)   ó   v₁+v₂ (opuestos)',
+       gen:()=>({v1:Math.round(Math.random()*40+20),v2:Math.round(Math.random()*30+10),dir:Math.random()>.5?'mismo sentido':'sentidos opuestos'}),
+       question:d=>`El tren A va a <strong>${d.v1} m/s</strong> y el tren B a <strong>${d.v2} m/s</strong> en <strong>${d.dir}</strong>. ¿Cuál es la velocidad relativa entre ellos?`,
+       chips:d=>[['v₁',d.v1,'m/s'],['v₂',d.v2,'m/s'],['dirección',d.dir,'']],
+       answer:d=>d.dir==='mismo sentido'?Math.abs(d.v1-d.v2):d.v1+d.v2, unit:'m/s', tol:0.01,
+       steps:d=>{const r=d.dir==='mismo sentido'?Math.abs(d.v1-d.v2):d.v1+d.v2;return[
+         {t:'Velocidades y dirección del movimiento.',m:`v₁=${d.v1} m/s   |   v₂=${d.v2} m/s   |   ${d.dir}`},
+         {t:d.dir==='mismo sentido'?'Mismo sentido → resta los módulos.':'Sentidos opuestos → suma las velocidades.',m:d.dir==='mismo sentido'?`v_rel = |${d.v1} − ${d.v2}|`:`v_rel = ${d.v1} + ${d.v2}`},
+         {t:'Resultado.',m:`v_rel = ${r} m/s`}]},
+       hints:['**Mismo sentido**: resta  /  **Sentidos opuestos**: suma. ¿Qué dice el enunciado?',
+              'El enunciado dice "{dir}". Aplica la operación correcta con {v1} y {v2}.',
+              'Solución: v_rel = {r} m/s']},
+    ],
+    advanced:[
+      {id:'va1',title:'MRUA — Velocidad final',
+       concept:'En el Movimiento Rectilíneo Uniformemente Acelerado (MRUA) la velocidad cambia de forma constante. La ecuación v = v₀ + a·t relaciona los cuatro valores clave.',
+       formula:'v = v₀ + a · t',
+       gen:()=>({v0:Math.round(Math.random()*20),a:parseFloat((Math.random()*5+0.5).toFixed(1)),t:Math.round(Math.random()*12+2)}),
+       question:d=>`Un vehículo parte con velocidad inicial de <strong>${d.v0} m/s</strong> y tiene aceleración de <strong>${d.a} m/s²</strong>. ¿Cuál es su velocidad tras <strong>${d.t} segundos</strong>?`,
+       chips:d=>[['v₀',d.v0,'m/s'],['a',d.a,'m/s²'],['t',d.t,'s']],
+       answer:d=>d.v0+d.a*d.t, unit:'m/s', tol:0.01,
+       steps:d=>{const at=(d.a*d.t).toFixed(2);const r=(d.v0+d.a*d.t).toFixed(2);return[
+         {t:'Datos del problema.',m:`v₀=${d.v0} m/s   |   a=${d.a} m/s²   |   t=${d.t} s`},
+         {t:'Ecuación cinemática del MRUA.',m:'v = v₀ + a · t'},
+         {t:'Calcula a·t primero (multiplica).',m:`a·t = ${d.a} × ${d.t} = ${at}`},
+         {t:'Suma el resultado a v₀.',m:`v = ${d.v0} + ${at} = ${r} m/s`}]},
+       hints:['Fórmula MRUA: **v = v₀ + a·t**. Identifica los tres valores dados.',
+              'Primero multiplica a×t = {a}×{t}. Luego súmale v₀ = {v0}.',
+              'Solución: v = {v0}+{a}×{t} = {r} m/s']},
+    ]
+  }},
+  kinematics:{label:'Cinemática',icon:'⟳',levels:{
+    basic:[
+      {id:'kb1',title:'Tiro parabólico — Alcance',
+       concept:'Un proyectil lanzado con ángulo θ sigue una parábola. El alcance máximo ocurre a 45°. La gravedad g = 9.8 m/s² actúa siempre hacia abajo.',
+       formula:'R = v₀² · sin(2θ) / g',
+       gen:()=>({v0:Math.round(Math.random()*20+10),theta:Math.round(Math.random()*55+15)}),
+       question:d=>`Un proyectil se lanza a <strong>${d.v0} m/s</strong> con ángulo de <strong>${d.theta}°</strong>. Calcula el alcance horizontal. (g = 9.8 m/s²)`,
+       chips:d=>[['v₀',d.v0,'m/s'],['θ',d.theta,'°'],['g','9.8','m/s²']],
+       answer:d=>(d.v0*d.v0*Math.sin(2*d.theta*Math.PI/180))/9.8, unit:'m', tol:0.02, hasPlot:true,
+       steps:d=>{const s2=Math.sin(2*d.theta*Math.PI/180);const R=((d.v0*d.v0*s2)/9.8).toFixed(2);return[
+         {t:'Datos.',m:`v₀=${d.v0} m/s   |   θ=${d.theta}°   |   g=9.8 m/s²`},
+         {t:'Fórmula del alcance horizontal.',m:'R = v₀² · sin(2θ) / g'},
+         {t:'Calcula sin(2θ): multiplica el ángulo por 2 y aplica seno.',m:`sin(2×${d.theta}°) = sin(${2*d.theta}°) ≈ ${s2.toFixed(4)}`},
+         {t:'Eleva v₀ al cuadrado.',m:`v₀² = ${d.v0}² = ${d.v0*d.v0}`},
+         {t:'Sustituye todo y divide entre g.',m:`R = ${d.v0*d.v0} × ${s2.toFixed(4)} / 9.8 ≈ ${R} m`}]},
+       hints:['Fórmula: **R = v₀²·sin(2θ)/g**. Calcula sin(2θ) en tu calculadora primero.',
+              'Paso 1: sin(2×{theta}°).  Paso 2: {v0}².  Paso 3: multiplica y divide entre 9.8.',
+              'Solución: R ≈ {r} m']},
+    ],
+    intermediate:[
+      {id:'ki1',title:'MRUA — Posición final',
+       concept:'La ecuación x = x₀ + v₀t + ½at² describe la posición en cada instante del MRUA. Tiene tres términos que se calculan por separado y se suman al final.',
+       formula:'x = x₀ + v₀·t + ½·a·t²',
+       gen:()=>({x0:Math.round(Math.random()*15),v0:Math.round(Math.random()*12+2),a:parseFloat((Math.random()*4-1).toFixed(1)),t:Math.round(Math.random()*7+2)}),
+       question:d=>`Un objeto parte de <strong>x₀ = ${d.x0} m</strong> con <strong>v₀ = ${d.v0} m/s</strong> y <strong>a = ${d.a} m/s²</strong>. ¿Cuál es su posición a los <strong>${d.t} segundos</strong>?`,
+       chips:d=>[['x₀',d.x0,'m'],['v₀',d.v0,'m/s'],['a',d.a,'m/s²'],['t',d.t,'s']],
+       answer:d=>d.x0+d.v0*d.t+0.5*d.a*d.t*d.t, unit:'m', tol:0.02,
+       steps:d=>{const t2=(d.v0*d.t);const t3=(0.5*d.a*d.t*d.t).toFixed(2);const r=(d.x0+d.v0*d.t+0.5*d.a*d.t*d.t).toFixed(2);return[
+         {t:'Datos.',m:`x₀=${d.x0}   v₀=${d.v0}   a=${d.a}   t=${d.t}`},
+         {t:'Ecuación de posición MRUA.',m:'x = x₀ + v₀·t + ½·a·t²'},
+         {t:'Calcula el 2° término: v₀·t',m:`v₀·t = ${d.v0}×${d.t} = ${t2}`},
+         {t:'Calcula el 3° término: ½·a·t²',m:`½·a·t² = 0.5×${d.a}×${d.t}² = ${t3}`},
+         {t:'Suma los tres términos.',m:`x = ${d.x0} + ${t2} + (${t3}) = ${r} m`}]},
+       hints:['Ecuación: **x = x₀ + v₀t + ½at²**. Calcula cada término por separado antes de sumar.',
+              'Término 2: v₀·t = {v0}×{t}.   Término 3: ½×{a}×{t}².   Luego suma los tres.',
+              'Solución: x ≈ {r} m']},
+    ],
+    advanced:[
+      {id:'ka1',title:'Lanzamiento horizontal — Tiempo de vuelo',
+       concept:'En el lanzamiento horizontal el movimiento vertical es caída libre pura (velocidad inicial vertical = 0). El tiempo de vuelo sólo depende de la altura.',
+       formula:'h = ½·g·t²   →   t = √(2h/g)',
+       gen:()=>({h:Math.round(Math.random()*80+20),v0:Math.round(Math.random()*25+10)}),
+       question:d=>`Un objeto se lanza horizontalmente a <strong>${d.v0} m/s</strong> desde <strong>${d.h} m</strong> de altura. ¿Cuánto tarda en llegar al suelo? (g = 9.8 m/s²)`,
+       chips:d=>[['h',d.h,'m'],['v₀',d.v0,'m/s (horiz.)'],['g','9.8','m/s²']],
+       answer:d=>Math.sqrt(2*d.h/9.8), unit:'s', tol:0.02, hasPlot:true,
+       steps:d=>{const t=Math.sqrt(2*d.h/9.8);const t2=(2*d.h/9.8).toFixed(4);return[
+         {t:'El movimiento vertical es caída libre (v₀v = 0).',m:'h = ½·g·t²'},
+         {t:'Despeja t².',m:`t² = 2h/g = 2×${d.h}/9.8 = ${t2}`},
+         {t:'Aplica raíz cuadrada.',m:`t = √${t2} = ${t.toFixed(3)} s`},
+         {t:'La velocidad horizontal no afecta al tiempo (solo al alcance).',m:`Alcance = v₀·t = ${d.v0}×${t.toFixed(3)} = ${(d.v0*t).toFixed(2)} m`}]},
+       hints:['Caída libre vertical: **h = ½·g·t²**. Despeja t: t = √(2h/g).',
+              'Sustituye: t² = 2×{h}/9.8. Calcula ese número y extrae la raíz cuadrada.',
+              'Solución: t = {r} s']},
+    ]
+  }},
+  vectors:{label:'Vectores',icon:'↗',levels:{
+    basic:[
+      {id:'veb1',title:'Módulo de un vector',
+       concept:'El módulo es la "longitud" de un vector 2D. Se calcula con el Teorema de Pitágoras: las dos componentes son los catetos y el módulo es la hipotenusa.',
+       formula:'|A| = √(Ax² + Ay²)',
+       gen:()=>({ax:Math.round(Math.random()*10-2),ay:Math.round(Math.random()*10+1)}),
+       question:d=>`Dado el vector <strong>A = (${d.ax}, ${d.ay})</strong>, calcula su módulo.`,
+       chips:d=>[['Ax',d.ax,''],['Ay',d.ay,'']],
+       answer:d=>Math.sqrt(d.ax*d.ax+d.ay*d.ay), unit:'', tol:0.01,
+       steps:d=>{const r=Math.sqrt(d.ax*d.ax+d.ay*d.ay).toFixed(4);return[
+         {t:'Componentes del vector.',m:`Ax = ${d.ax}   |   Ay = ${d.ay}`},
+         {t:'Fórmula del módulo (Teorema de Pitágoras).',m:'|A| = √(Ax² + Ay²)'},
+         {t:'Eleva cada componente al cuadrado.',m:`Ax² = ${d.ax*d.ax}   |   Ay² = ${d.ay*d.ay}`},
+         {t:'Suma y aplica raíz cuadrada.',m:`|A| = √(${d.ax*d.ax}+${d.ay*d.ay}) = √${d.ax*d.ax+d.ay*d.ay} = ${r}`}]},
+       hints:['Fórmula: **|A| = √(Ax² + Ay²)**. Eleva al cuadrado cada componente, suma y extrae √.',
+              'Primero {ax}² = ?  y  {ay}² = ?  Súmalos y aplica raíz cuadrada.',
+              'Solución: |A| = √({ax2}+{ay2}) = {r}']},
+      {id:'veb2',title:'Suma de vectores',
+       concept:'Para sumar vectores 2D, suma las componentes x con x, y las componentes y con y. El módulo del vector resultante se calcula con Pitágoras.',
+       formula:'|A+B| = √((Ax+Bx)² + (Ay+By)²)',
+       gen:()=>({ax:Math.round(Math.random()*8-2),ay:Math.round(Math.random()*8+1),bx:Math.round(Math.random()*6-1),by:Math.round(Math.random()*6+1)}),
+       question:d=>`Dados A = (${d.ax}, ${d.ay}) y B = (${d.bx}, ${d.by}), calcula el módulo del vector resultante A + B.`,
+       chips:d=>[['Ax',d.ax,''],['Ay',d.ay,''],['Bx',d.bx,''],['By',d.by,'']],
+       answer:d=>{const rx=d.ax+d.bx,ry=d.ay+d.by;return Math.sqrt(rx*rx+ry*ry)}, unit:'', tol:0.01,
+       steps:d=>{const rx=d.ax+d.bx,ry=d.ay+d.by;const r=Math.sqrt(rx*rx+ry*ry).toFixed(4);return[
+         {t:'Suma las componentes x.',m:`Rx = ${d.ax}+${d.bx} = ${rx}`},
+         {t:'Suma las componentes y.',m:`Ry = ${d.ay}+${d.by} = ${ry}`},
+         {t:'Aplica Pitágoras al vector resultante.',m:`|R| = √(${rx}²+${ry}²) = √(${rx*rx}+${ry*ry})`},
+         {t:'Resultado.',m:`|R| = ${r}`}]},
+       hints:['Suma x con x y y con y. Luego **|R| = √(Rx²+Ry²)**.',
+              'Rx = {ax}+{bx},  Ry = {ay}+{by}.  Ahora aplica Pitágoras.',
+              'Solución: |R| = {r}']},
+    ],
+    intermediate:[
+      {id:'vei1',title:'Producto punto y ángulo',
+       concept:'El producto punto A·B = Ax·Bx + Ay·By. Si es 0, los vectores son perpendiculares. El ángulo entre vectores usa arccos.',
+       formula:'A·B = Ax·Bx+Ay·By   →   θ = arccos(A·B / |A|·|B|)',
+       gen:()=>({ax:Math.round(Math.random()*8-1),ay:Math.round(Math.random()*8+1),bx:Math.round(Math.random()*8-1),by:Math.round(Math.random()*6-2)}),
+       question:d=>`Calcula el ángulo entre A = (${d.ax}, ${d.ay}) y B = (${d.bx}, ${d.by}). Da la respuesta en grados.`,
+       chips:d=>[['Ax',d.ax,''],['Ay',d.ay,''],['Bx',d.bx,''],['By',d.by,'']],
+       answer:d=>{const dot=d.ax*d.bx+d.ay*d.by;const ma=Math.sqrt(d.ax*d.ax+d.ay*d.ay);const mb=Math.sqrt(d.bx*d.bx+d.by*d.by);return ma&&mb?Math.acos(Math.max(-1,Math.min(1,dot/(ma*mb))))*180/Math.PI:0}, unit:'°', tol:0.5,
+       steps:d=>{const dot=d.ax*d.bx+d.ay*d.by;const ma=Math.sqrt(d.ax*d.ax+d.ay*d.ay);const mb=Math.sqrt(d.bx*d.bx+d.by*d.by);const ang=(Math.acos(Math.max(-1,Math.min(1,dot/(ma*mb))))*180/Math.PI).toFixed(2);return[
+         {t:'Calcula el producto punto.',m:`A·B = ${d.ax}·${d.bx}+${d.ay}·${d.by} = ${dot}`},
+         {t:'Módulo de A.',m:`|A| = √(${d.ax}²+${d.ay}²) = ${ma.toFixed(3)}`},
+         {t:'Módulo de B.',m:`|B| = √(${d.bx}²+${d.by}²) = ${mb.toFixed(3)}`},
+         {t:'Aplica la fórmula del ángulo.',m:`cos(θ) = ${dot}/(${ma.toFixed(3)}×${mb.toFixed(3)}) = ${(dot/(ma*mb)).toFixed(4)}`},
+         {t:'Aplica arccos en tu calculadora.',m:`θ = arccos(${(dot/(ma*mb)).toFixed(4)}) = ${ang}°`}]},
+       hints:['Paso 1: A·B = Ax·Bx+Ay·By.  Paso 2: |A| e |B| con Pitágoras.  Paso 3: θ = arccos(A·B / |A||B|).',
+              'Calcula primero el producto punto. Luego los módulos. Por último arccos.',
+              'Solución: θ = {r}°']},
+    ],
+    advanced:[
+      {id:'vea1',title:'Descomposición de una fuerza',
+       concept:'Una fuerza aplicada con ángulo θ se descompone en componente horizontal (coseno) y vertical (seno). Esto permite analizar el efecto de cada dirección por separado.',
+       formula:'Fx = F·cos(θ),   Fy = F·sin(θ)',
+       gen:()=>({f:Math.round(Math.random()*80+20),theta:Math.round(Math.random()*70+10)}),
+       question:d=>`Una fuerza de <strong>${d.f} N</strong> se aplica a <strong>${d.theta}°</strong> sobre la horizontal. Calcula la componente horizontal Fx.`,
+       chips:d=>[['F',d.f,'N'],['θ',d.theta,'°']],
+       answer:d=>d.f*Math.cos(d.theta*Math.PI/180), unit:'N', tol:0.02,
+       steps:d=>{const rad=d.theta*Math.PI/180;const fx=(d.f*Math.cos(rad)).toFixed(3);const fy=(d.f*Math.sin(rad)).toFixed(3);return[
+         {t:'Datos del problema.',m:`F=${d.f} N   |   θ=${d.theta}°`},
+         {t:'Componente horizontal usa coseno.',m:`Fx = F·cos(θ) = ${d.f}·cos(${d.theta}°)`},
+         {t:'Calcula cos(${d.theta}°) en tu calculadora.',m:`cos(${d.theta}°) ≈ ${Math.cos(rad).toFixed(4)}`},
+         {t:'Multiplica.',m:`Fx = ${d.f} × ${Math.cos(rad).toFixed(4)} = ${fx} N`},
+         {t:'La componente vertical sería Fy = F·sin(θ).',m:`Fy = ${d.f}·sin(${d.theta}°) = ${fy} N`}]},
+       hints:['Para la componente horizontal: **Fx = F·cos(θ)**. La vertical sería Fy = F·sin(θ).',
+              'Fx = {f}·cos({theta}°). Calcula el coseno del ángulo en tu calculadora y multiplica por {f}.',
+              'Solución: Fx = {f}·cos({theta}°) = {r} N']},
+    ]
+  }},
+  algebra:{label:'Álgebra',icon:'=',levels:{
+    basic:[
+      {id:'ab1',title:'Ecuación lineal',
+       concept:'Para resolver ax+b=c, el objetivo es despejar x. Se hace pasando b al otro lado (restando) y luego dividiendo entre a.',
+       formula:'ax + b = c   →   x = (c − b) / a',
+       gen:()=>{const a=Math.round(Math.random()*7+1);const x=Math.round(Math.random()*10-3);const b=Math.round(Math.random()*8);return{a,b,c:a*x+b}},
+       question:d=>`Resuelve la ecuación: <strong>${d.a}x + ${d.b} = ${d.c}</strong>`,
+       chips:d=>[['a',d.a,''],['b',d.b,''],['c',d.c,'']],
+       answer:d=>(d.c-d.b)/d.a, unit:'', tol:0.01,
+       steps:d=>{const cb=d.c-d.b;const r=((d.c-d.b)/d.a).toFixed(4);return[
+         {t:'Ecuación original.',m:`${d.a}x + ${d.b} = ${d.c}`},
+         {t:'Pasa b al otro lado (resta ${d.b} en ambos miembros).',m:`${d.a}x = ${d.c} − ${d.b} = ${cb}`},
+         {t:'Despeja x dividiendo entre a.',m:`x = ${cb} / ${d.a}`},
+         {t:'Resultado.',m:`x = ${r}`},
+         {t:'Verificación: sustituye x en la ecuación.',m:`${d.a}·(${r}) + ${d.b} = ${(d.a*parseFloat(r)+d.b).toFixed(2)} ✓`}]},
+       hints:['Para despejar x: **primero mueve b** (réstalo a ambos lados), **luego divide entre a**.',
+              'Paso 1: ${d.a}x = {c}−{b} = ?   Paso 2: divide ese resultado entre {a}.',
+              'Solución: x = ({c}−{b})/{a} = {r}']},
+      {id:'ab2',title:'Ecuación con fracción',
+       concept:'Una ecuación como x/a = b se resuelve multiplicando ambos lados por el denominador para eliminar la fracción.',
+       formula:'x/a = b   →   x = b · a',
+       gen:()=>{const a=Math.round(Math.random()*6+2);const x=Math.round(Math.random()*20+4);return{a,b:x/a,x}},
+       question:d=>`Resuelve: <strong>x / ${d.a} = ${d.b}</strong>`,
+       chips:d=>[['denominador',d.a,''],['resultado',d.b,'']],
+       answer:d=>d.x, unit:'', tol:0.01,
+       steps:d=>[
+         {t:'Ecuación original.',m:`x / ${d.a} = ${d.b}`},
+         {t:'Multiplica ambos lados por el denominador.',m:`x = ${d.b} × ${d.a}`},
+         {t:'Resultado.',m:`x = ${d.x}`},
+         {t:'Verificación.',m:`${d.x} / ${d.a} = ${d.b} ✓`}],
+       hints:['Para eliminar la fracción **multiplica ambos lados por el denominador** (por {a}).',
+              'x = {b} × {a}. Multiplica directamente.',
+              'Solución: x = {b}×{a} = {r}']},
+    ],
+    intermediate:[
+      {id:'ai1',title:'Ecuación cuadrática',
+       concept:'La fórmula general resuelve ax²+bx+c=0. El discriminante Δ=b²−4ac determina cuántas soluciones reales existen: si Δ<0 no hay soluciones reales.',
+       formula:'x = (−b ± √(b²−4ac)) / 2a',
+       gen:()=>{const x1=Math.round(Math.random()*8-3);const x2=Math.round(Math.random()*8-1);const a=1,b=-(x1+x2),c=x1*x2;return{a,b,c,_x1:Math.max(x1,x2),_x2:Math.min(x1,x2)}},
+       question:d=>`Resuelve: <strong>x² + (${d.b})x + ${d.c} = 0</strong>. Da la raíz mayor.`,
+       chips:d=>[['a',d.a,''],['b',d.b,''],['c',d.c,'']],
+       answer:d=>d._x1, unit:'', tol:0.01,
+       steps:d=>{const disc=d.b*d.b-4*d.a*d.c;const sqd=Math.sqrt(disc).toFixed(4);return[
+         {t:'Identifica a, b y c.',m:`a=${d.a}   b=${d.b}   c=${d.c}`},
+         {t:'Calcula el discriminante.',m:`Δ = b²−4ac = (${d.b})²−4·${d.a}·${d.c} = ${d.b*d.b}−${4*d.a*d.c} = ${disc}`},
+         {t:'Δ>0 → dos soluciones reales. Calcula √Δ.',m:`√${disc} = ${sqd}`},
+         {t:'Primera raíz (mayor).',m:`x₁ = (−(${d.b})+${sqd}) / 2 = ${d._x1}`},
+         {t:'Segunda raíz.',m:`x₂ = (−(${d.b})−${sqd}) / 2 = ${d._x2}`}]},
+       hints:['Fórmula: **x=(−b±√(b²−4ac))/2a**. Empieza calculando el discriminante Δ=b²−4ac.',
+              'Δ = ({b})²−4·{a}·{c}. Calcula ese número. Si Δ≥0 hay soluciones reales.',
+              'Solución: raíz mayor = {r}']},
+    ],
+    advanced:[
+      {id:'aa1',title:'Sistema 2×2 — Regla de Cramer',
+       concept:'La Regla de Cramer resuelve sistemas usando determinantes. El determinante principal D=a₁b₂−a₂b₁ no puede ser cero (si D=0, el sistema no tiene solución única).',
+       formula:'D=a₁b₂−a₂b₁,  x=Dx/D,  y=Dy/D',
+       gen:()=>{const x=Math.round(Math.random()*8-2);const y=Math.round(Math.random()*8-2);const a1=Math.round(Math.random()*4+1);const b1=Math.round(Math.random()*4-1)||1;const a2=Math.round(Math.random()*3+1);const b2=Math.round(Math.random()*4-2)||(-1);return{a1,b1,c1:a1*x+b1*y,a2,b2,c2:a2*x+b2*y,_x:x,_y:y}},
+       question:d=>`Resuelve el sistema:\n<strong>${d.a1}x + ${d.b1}y = ${d.c1}</strong>\n<strong>${d.a2}x + ${d.b2}y = ${d.c2}</strong>\nDa el valor de x.`,
+       chips:d=>[['a₁',d.a1,''],['b₁',d.b1,''],['c₁',d.c1,''],['a₂',d.a2,''],['b₂',d.b2,''],['c₂',d.c2,'']],
+       answer:d=>d._x, unit:'', tol:0.01,
+       steps:d=>{const det=d.a1*d.b2-d.a2*d.b1;const dx=d.c1*d.b2-d.c2*d.b1;const dy=d.a1*d.c2-d.a2*d.c1;return[
+         {t:'Sistema de ecuaciones.',m:`${d.a1}x+${d.b1}y=${d.c1}   /   ${d.a2}x+${d.b2}y=${d.c2}`},
+         {t:'Determinante principal D = a₁b₂ − a₂b₁.',m:`D = ${d.a1}·${d.b2}−${d.a2}·${d.b1} = ${det}`},
+         {t:'Determinante Dx (reemplaza columna x por los resultados).',m:`Dx = ${d.c1}·${d.b2}−${d.c2}·${d.b1} = ${dx}`},
+         {t:'x = Dx / D.',m:`x = ${dx}/${det} = ${d._x}`},
+         {t:'Determinante Dy y valor de y.',m:`Dy = ${d.a1}·${d.c2}−${d.a2}·${d.c1} = ${dy}   →   y=${dy}/${det}=${d._y}`}]},
+       hints:['**Cramer**: calcula D=a₁b₂−a₂b₁. Luego Dx reemplazando la columna de x por [c₁,c₂]. x=Dx/D.',
+              'D = {a1}·{b2}−{a2}·{b1}.  Dx = {c1}·{b2}−{c2}·{b1}.  x = Dx/D.',
+              'Solución: x = {r}']},
+    ]
+  }},
+  force:{label:'Fuerzas',icon:'F',levels:{
+    basic:[
+      {id:'fb1',title:'Segunda Ley de Newton',
+       concept:'La Segunda Ley de Newton dice que la fuerza neta sobre un objeto es igual a su masa multiplicada por su aceleración. Es la ley fundamental de la dinámica.',
+       formula:'F = m · a',
+       gen:()=>({m:Math.round(Math.random()*40+2),a:parseFloat((Math.random()*15+0.5).toFixed(1))}),
+       question:d=>`Un objeto de <strong>${d.m} kg</strong> tiene una aceleración de <strong>${d.a} m/s²</strong>. ¿Cuál es la fuerza neta que actúa sobre él?`,
+       chips:d=>[['m',d.m,'kg'],['a',d.a,'m/s²']],
+       answer:d=>d.m*d.a, unit:'N', tol:0.01,
+       steps:d=>{const r=(d.m*d.a).toFixed(2);return[
+         {t:'Datos del problema.',m:`m=${d.m} kg   |   a=${d.a} m/s²`},
+         {t:'Segunda Ley de Newton.',m:'F = m · a'},
+         {t:'Sustituye y multiplica.',m:`F = ${d.m} × ${d.a} = ${r} N`}]},
+       hints:['Segunda Ley de Newton: **F = m · a**. Solo multiplica masa por aceleración.',
+              'F = {m} × {a}. Multiplica los dos valores directamente.',
+              'Solución: F = {m}×{a} = {r} N']},
+    ],
+    intermediate:[
+      {id:'fi1',title:'Plano inclinado — Aceleración',
+       concept:'En un plano inclinado sin fricción, la componente del peso paralela al plano causa la aceleración. La masa se cancela en la ecuación final.',
+       formula:'a = g · sin(θ)',
+       gen:()=>({theta:Math.round(Math.random()*55+10),m:Math.round(Math.random()*15+2)}),
+       question:d=>`Un bloque de <strong>${d.m} kg</strong> reposa en un plano inclinado a <strong>${d.theta}°</strong> (sin fricción). ¿Cuál es su aceleración al soltarlo? (g = 9.8 m/s²)`,
+       chips:d=>[['θ',d.theta,'°'],['m',d.m,'kg'],['g','9.8','m/s²']],
+       answer:d=>9.8*Math.sin(d.theta*Math.PI/180), unit:'m/s²', tol:0.02,
+       steps:d=>{const rad=d.theta*Math.PI/180;const a=(9.8*Math.sin(rad)).toFixed(3);return[
+         {t:'Componente del peso paralela al plano produce la aceleración.',m:'Fp = m·g·sin(θ)'},
+         {t:'Por 2ª Ley (F=ma), la masa se cancela.',m:'a = g · sin(θ)'},
+         {t:`Calcula sin(${d.theta}°) en tu calculadora.`,m:`sin(${d.theta}°) ≈ ${Math.sin(rad).toFixed(4)}`},
+         {t:'Resultado.',m:`a = 9.8 × ${Math.sin(rad).toFixed(4)} = ${a} m/s²`}]},
+       hints:['Sin fricción: **a = g·sin(θ)**. La masa NO importa — se cancela.',
+              'a = 9.8 × sin({theta}°). Calcula el seno del ángulo y multiplica por 9.8.',
+              'Solución: a = 9.8×sin({theta}°) = {r} m/s²']},
+    ],
+    advanced:[
+      {id:'fa1',title:'Plano inclinado con fricción',
+       concept:'Con fricción, la fuerza de rozamiento fr=μN se opone al movimiento. La aceleración neta combina la gravedad a favor y la fricción en contra.',
+       formula:'a = g·(sin θ − μ·cos θ)',
+       gen:()=>({theta:Math.round(Math.random()*45+20),mu:parseFloat((Math.random()*0.4+0.1).toFixed(2)),m:Math.round(Math.random()*10+2)}),
+       question:d=>`Un bloque de <strong>${d.m} kg</strong> baja por un plano a <strong>${d.theta}°</strong> con coeficiente de rozamiento <strong>μ = ${d.mu}</strong>. ¿Cuál es su aceleración? (g = 9.8 m/s²)`,
+       chips:d=>[['θ',d.theta,'°'],['μ',d.mu,''],['m',d.m,'kg'],['g','9.8','m/s²']],
+       answer:d=>9.8*(Math.sin(d.theta*Math.PI/180)-d.mu*Math.cos(d.theta*Math.PI/180)), unit:'m/s²', tol:0.02,
+       steps:d=>{const rad=d.theta*Math.PI/180;const gp=(9.8*Math.sin(rad)).toFixed(3);const fr=(d.mu*9.8*Math.cos(rad)).toFixed(3);const a=(9.8*(Math.sin(rad)-d.mu*Math.cos(rad))).toFixed(3);return[
+         {t:'Datos.',m:`θ=${d.theta}°   μ=${d.mu}   g=9.8 m/s²`},
+         {t:'Fuerza neta paralela al plano (gravedad − fricción).',m:'a = g·sin(θ) − μ·g·cos(θ)'},
+         {t:'Calcula g·sin(θ).',m:`9.8×sin(${d.theta}°) = ${gp} m/s²`},
+         {t:'Calcula μ·g·cos(θ).',m:`${d.mu}×9.8×cos(${d.theta}°) = ${fr} m/s²`},
+         {t:'Resta (si a<0, la fricción es mayor que la gravedad y el bloque no se mueve).',m:`a = ${gp}−${fr} = ${a} m/s²`}]},
+       hints:['Fórmula: **a = g·(sinθ − μ·cosθ)**. Calcula cada término por separado y réstalos.',
+              'Término 1: g·sin({theta}°).  Término 2: {mu}·g·cos({theta}°).  Resta el 2 del 1.',
+              'Solución: a = g(sin{theta}°−{mu}·cos{theta}°) = {r} m/s²']},
+    ]
+  }}
+};
+
+// ================================================================
+// ADAPTIVE ENGINE
+// ================================================================
+const Adaptive={
+  score(hist,topic,lv){
+    const r=hist.filter(h=>h.topic===topic&&h.lv===lv);
+    if(!r.length)return 50;
+    const l=r.slice(-10);
+    const acc=l.filter(h=>h.ok).length/l.length;
+    const att=l.reduce((s,h)=>s+h.att,0)/l.length;
+    const tim=l.reduce((s,h)=>s+h.sec,0)/l.length;
+    return Math.round((acc*.6+Math.max(0,1-(att-1)*.25)*.25+Math.max(0,1-tim/120)*.15)*100);
+  },
+  rec(score,lv){
+    const ls=['basic','intermediate','advanced'];const i=ls.indexOf(lv);
+    if(score>=80&&i<2)return{act:'up',to:ls[i+1]};
+    if(score<=35&&i>0)return{act:'down',to:ls[i-1]};
+    return{act:'keep',to:lv};
+  },
+  msg(score,rec,n){
+    if(n<3)return`Completa ${3-n} ejercicio(s) más para activar el ajuste.`;
+    const nm={basic:'Básico',intermediate:'Intermedio',advanced:'Avanzado'};
+    if(rec.act==='up')return`<strong>¡Muy bien!</strong> Score ${score}/100 — el sistema sugiere pasar a <strong>${nm[rec.to]}</strong>.`;
+    if(rec.act==='down')return`Score ${score}/100 — te recomendamos reforzar en <strong>${nm[rec.to]}</strong>.`;
+    return`Score ${score}/100 — vas bien, sigue en este nivel.`;
+  }
+};
+
+// ================================================================
+// PROGRESS
+// ================================================================
+const Prog={
+  K:'calcDid_v2',
+  load(){try{return JSON.parse(localStorage.getItem(this.K))||[]}catch{return[]}},
+  add(e){const h=this.load();h.push({...e,ts:Date.now()});localStorage.setItem(this.K,JSON.stringify(h));return h},
+  stats(hist,topic,lv){
+    const r=hist.filter(h=>h.topic===topic&&h.lv===lv);
+    if(!r.length)return null;
+    return{acc:(r.filter(h=>h.ok).length/r.length*100).toFixed(0),att:(r.reduce((s,h)=>s+h.att,0)/r.length).toFixed(1),sec:(r.reduce((s,h)=>s+h.sec,0)/r.length).toFixed(0),n:r.length};
+  },
+  clear(){localStorage.removeItem(this.K)}
+};
+
+// ================================================================
+// STATE
+// ================================================================
+let S={lv:'basic',topic:'velocity',idx:0,data:null,ans:null,hints:0,att:0,t0:null,hist:Prog.load(),vars:{}};
+
+// ================================================================
+// UI HELPERS
+// ================================================================
+function toast(m,d=3200){const el=document.getElementById('toast');el.textContent=m;el.classList.add('on');setTimeout(()=>el.classList.remove('on'),d)}
+
+function setLv(lv){S.lv=lv;S.idx=0;document.querySelectorAll('.lv').forEach(b=>b.classList.toggle('on',b.dataset.lv===lv));renderEx();updateUI()}
+
+function setTopic(tp){S.topic=tp;S.idx=0;document.querySelectorAll('.ti').forEach(b=>b.classList.toggle('on',b.dataset.tp===tp));renderEx();updateUI()}
+
+function getEx(){const list=DB[S.topic]?.levels[S.lv];return list?list[S.idx%list.length]:null}
+
+// ================================================================
+// RENDER TOPICS
+// ================================================================
+function renderTopics(){
+  const el=document.getElementById('tList');el.innerHTML='';
+  Object.entries(DB).forEach(([k,v])=>{
+    const d=document.createElement('div');d.className='ti'+(k===S.topic?' on':'');
+    d.dataset.tp=k;d.onclick=()=>setTopic(k);d.setAttribute('role','button');d.setAttribute('tabindex','0');
+    d.setAttribute('aria-label',`Tema: ${v.label}`);
+    d.innerHTML=`<span style="width:20px;text-align:center">${v.icon}</span>${v.label}`;
+    d.onkeydown=e=>e.key==='Enter'&&setTopic(k);
+    el.appendChild(d);
+  });
+}
+
+// ================================================================
+// RENDER EXERCISE
+// ================================================================
+function renderEx(){
+  const ex=getEx();const mc=document.getElementById('main');
+  S.hints=0;S.att=0;S.t0=Date.now();
+  if(!ex){mc.innerHTML=`<div class="panel" style="text-align:center;padding:40px"><p style="color:var(--cd)">No hay ejercicios para este nivel.</p></div>`;return}
+
+  const vk=`${S.topic}_${S.lv}_${ex.id}`;
+  if(!S.vars[vk])S.vars[vk]=ex.gen();
+  const d=S.vars[vk];
+  S.data=d;S.ans=ex.answer(d);
+
+  const chips=ex.chips(d).map(([k,v,u])=>`<div class="chip">${k} <span>= ${typeof v==='number'?(Number.isInteger(v)?v:parseFloat(v.toFixed(3))):v}${u?' '+u:''}</span></div>`).join('');
+
+  mc.innerHTML=`
+    <div class="lcard">
+      <h2>📖 ${ex.title}</h2>
+      <div class="cpt">${ex.concept}</div>
+      <div class="fbox">Fórmula: ${ex.formula}</div>
+    </div>
+    <div class="pcard">
+      <div class="plbl">◉ Ejercicio · ${S.lv==='basic'?'Básico':S.lv==='intermediate'?'Intermedio':'Avanzado'}</div>
+      <div class="pq">${ex.question(d)}</div>
+      <div class="chips">
+        <div class="clbl">Datos del problema:</div>
+        ${chips}
+      </div>
+      <div class="az">
+        <div class="albl">✏️ Resuélvelo en papel — escribe tu resultado aquí</div>
+        <div class="ar">
+          <input type="number" id="ai" class="ai" placeholder="Tu respuesta..." step="any" autocomplete="off"
+                 aria-label="Tu respuesta" onkeydown="if(event.key==='Enter')check()">
+          ${ex.unit?`<span class="au">${ex.unit}</span>`:''}
+          <button class="btn bp" onclick="check()" aria-label="Verificar respuesta">↵ Verificar</button>
+        </div>
+        <div class="asub">Usa la fórmula de arriba y papel. Cuando tengas el resultado, escríbelo y presiona Verificar.</div>
+      </div>
+      <div class="arow">
+        <button class="btn bh" id="bh1" onclick="showHint(1)" aria-label="Pista 1">💡 Pista 1</button>
+        <button class="btn bh" id="bh2" onclick="showHint(2)" disabled aria-label="Pista 2">🔍 Pista 2</button>
+        <button class="btn bh" id="bh3" onclick="showHint(3)" disabled aria-label="Ver respuesta directa">✅ Ver respuesta</button>
+        <button class="btn bs" onclick="toggleSteps()" id="btnSt" aria-label="Ver solución paso a paso">📐 Ver pasos</button>
+      </div>
+      <div class="hb" id="hb1"><div class="hl">Pista 1 — Estrategia y fórmula</div><span id="h1t"></span></div>
+      <div class="hb" id="hb2"><div class="hl">Pista 2 — Cómo sustituir los valores</div><span id="h2t"></span></div>
+      <div class="hb" id="hb3"><div class="hl">Respuesta directa</div><span id="h3t"></span></div>
+      <div class="fb" id="fbx">
+        <div class="fbt" id="fbt"></div>
+        <div class="fbm" id="fbm"></div>
+      </div>
+      <div class="stps" id="stps">
+        <h4>📐 Procedimiento completo — así se resuelve paso a paso</h4>
+        <div id="stpsC"></div>
+        <div class="ar2">Respuesta esperada: <strong id="ansReveal"></strong></div>
+      </div>
+      <div class="sug" id="sugB"><strong>🎯 Sistema Adaptativo</strong><span id="sugT"></span></div>
+      <div class="arow" style="margin-top:14px">
+        <button class="btn bn" onclick="newVariant()" aria-label="Nuevo ejercicio similar">↺ Otro similar</button>
+        <button class="btn bg" onclick="nextEx()" aria-label="Siguiente ejercicio">→ Siguiente</button>
+      </div>
+    </div>
+    <div class="plot" id="plotA"><h3>📊 Visualización</h3><div id="pC"></div></div>
+  `;
+
+  renderStepsContent(ex,d);
+  document.getElementById('ansReveal').textContent=`${S.ans.toFixed(4)} ${ex.unit||''}`;
+  document.getElementById('ai').focus();
+}
+
+// ================================================================
+// VERIFICAR RESPUESTA
+// ================================================================
+function check(){
+  const ex=getEx();if(!ex)return;
+  const inp=document.getElementById('ai');
+  const val=parseFloat(inp.value);
+  if(isNaN(val)){toast('Escribe un número como respuesta.');inp.focus();return}
+  S.att++;
+  const correct=Math.abs(val-S.ans)/(Math.abs(S.ans)||1)<ex.tol;
+  const fb=document.getElementById('fbx');
+  if(correct){
+    inp.className='ai ok';
+    fb.className='fb show ok';
+    document.getElementById('fbt').textContent=`✓ ¡Correcto! Resuelto en ${S.att} intento(s).`;
+    document.getElementById('fbm').textContent=`Tu respuesta ${val} ${ex.unit||''} es correcta.`;
+    const sec=Math.round((Date.now()-S.t0)/1000);
+    S.hist=Prog.add({topic:S.topic,lv:S.lv,id:ex.id,ok:true,att:S.att,sec});
+    updateUI();updateAdaptive();addHist(true,ex.title,S.att);
+    // Muestra pasos automáticamente al acertar (refuerzo del aprendizaje)
+    document.getElementById('stps').classList.add('show');
+    document.getElementById('btnSt').textContent='📐 Ocultar pasos';
+    if(ex.hasPlot)renderPlot(ex,S.data);
+  }else{
+    inp.className='ai no';
+    fb.className='fb show no';
+    const pct=(Math.abs(val-S.ans)/(Math.abs(S.ans)||1)*100).toFixed(1);
+    document.getElementById('fbt').textContent=`✗ No es correcto. Intento ${S.att}.`;
+    document.getElementById('fbm').textContent=`Tu respuesta está ${pct}% alejada del valor esperado. Revisa el procedimiento.`;
+    const sec=Math.round((Date.now()-S.t0)/1000);
+    S.hist=Prog.add({topic:S.topic,lv:S.lv,id:ex.id,ok:false,att:S.att,sec});
+    updateUI();addHist(false,ex.title,S.att);
+    // Pistas automáticas progresivas
+    if(S.att===1)showHint(1);
+    else if(S.att===2)showHint(2);
+    else if(S.att>=3)showHint(3);
+    inp.select();
+  }
+}
+
+// ================================================================
+// PISTAS
+// ================================================================
+function showHint(n){
+  const ex=getEx();if(!ex)return;
+  S.hints=Math.max(S.hints,n);
+  const d=S.data,r=S.ans;
+  function fmt(h){
+    return h.replace(/\{(\w+)\}/g,(_,k)=>{
+      if(k==='r')return r!==null?r.toFixed(4):'?';
+      if(k==='theta2'&&d.theta)return d.theta*2;
+      if(k==='ax2'&&d.ax!==undefined)return d.ax*d.ax;
+      if(k==='ay2'&&d.ay!==undefined)return d.ay*d.ay;
+      if(k==='dir'&&d.dir)return d.dir;
+      return d[k]!==undefined?d[k]:k;
+    }).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  }
+  for(let i=1;i<=3;i++){
+    const box=document.getElementById(`hb${i}`);
+    const txt=document.getElementById(`h${i}t`);
+    if(i<=S.hints&&ex.hints[i-1]){box.classList.add('show');txt.innerHTML=fmt(ex.hints[i-1])}
+    const btn=document.getElementById(`bh${i}`);
+    if(btn)btn.disabled=i>S.hints+1;
+  }
+  if(S.hints<3)document.getElementById(`bh${S.hints+1}`).disabled=false;
+}
+
+// ================================================================
+// PASOS
+// ================================================================
+function renderStepsContent(ex,d){
+  const steps=ex.steps(d);
+  document.getElementById('stpsC').innerHTML=steps.map((s,i)=>`
+    <div class="si">
+      <div class="sn">${i+1}.</div>
+      <div class="sb2">
+        ${s.t?`<div class="st">${s.t}</div>`:''}
+        ${s.m?`<div class="sm">${s.m}</div>`:''}
+      </div>
+    </div>`).join('');
+}
+
+function toggleSteps(){
+  const p=document.getElementById('stps'),b=document.getElementById('btnSt');
+  p.classList.toggle('show');
+  b.textContent=p.classList.contains('show')?'📐 Ocultar pasos':'📐 Ver pasos';
+}
+
+// ================================================================
+// PLOTLY
+// ================================================================
+function renderPlot(ex,d){
+  const pa=document.getElementById('plotA');if(!pa)return;
+  pa.classList.add('show');
+  if(typeof Plotly==='undefined'){pa.innerHTML+='<p style="color:var(--cd);font-size:.85rem;margin-top:8px">Plotly no disponible (sin conexión).</p>';return}
+  const g=9.8;let xs=[],ys=[];
+  if(ex.id==='kb1'){
+    const rad=d.theta*Math.PI/180;const vx=d.v0*Math.cos(rad);const vy=d.v0*Math.sin(rad);
+    const T=2*vy/g;for(let i=0;i<=60;i++){const t=i/60*T;xs.push(vx*t);ys.push(vy*t-0.5*g*t*t)}
+  }else if(ex.id==='ka1'){
+    const T=Math.sqrt(2*d.h/g);for(let i=0;i<=60;i++){const t=i/60*T;xs.push(d.v0*t);ys.push(d.h-0.5*g*t*t)}
+  }
+  if(!xs.length)return;
+  Plotly.newPlot('pC',[
+    {x:xs,y:ys,type:'scatter',mode:'lines',line:{color:'#e6a817',width:2.5},name:'Trayectoria'},
+    {x:[xs[0]],y:[ys[0]],type:'scatter',mode:'markers',marker:{color:'#3fb950',size:10},name:'Inicio'},
+    {x:[xs[xs.length-1]],y:[ys[ys.length-1]],type:'scatter',mode:'markers',marker:{color:'#f85149',size:10,symbol:'x'},name:'Impacto'}
+  ],{paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#b8a898',family:'JetBrains Mono'},margin:{t:10,r:10,b:40,l:50},xaxis:{title:'Distancia (m)',gridcolor:'#30363d'},yaxis:{title:'Altura (m)',gridcolor:'#30363d'},legend:{bgcolor:'rgba(0,0,0,0)'}},{responsive:true,displayModeBar:false});
+}
+
+// ================================================================
+// HISTORY UI
+// ================================================================
+function addHist(ok,title,att){
+  const l=document.getElementById('hList');const e=l.querySelector('p');if(e)e.remove();
+  const it=document.createElement('div');it.className=`hi ${ok?'ok':'no'}`;
+  it.innerHTML=`<div class="hd"></div><div class="htx">${title}</div><div class="hbg">${att} intento${att>1?'s':''}</div><div class="hbg" style="color:${ok?'var(--gn)':'var(--rd)'}">${ok?'✓':'✗'}</div>`;
+  l.insertBefore(it,l.firstChild);while(l.children.length>20)l.removeChild(l.lastChild);
+}
+
+// ================================================================
+// PROGRESS UI
+// ================================================================
+function updateUI(){
+  const st=Prog.stats(S.hist,S.topic,S.lv);
+  if(!st){['sAcc','sAtt','sTim'].forEach(id=>document.getElementById(id).textContent='—');document.getElementById('sSco').textContent='0';document.getElementById('mPct').textContent='0%';document.getElementById('mBar').style.width='0%';return}
+  document.getElementById('sAcc').textContent=st.acc+'%';
+  document.getElementById('sAtt').textContent=st.att;
+  document.getElementById('sTim').textContent=st.sec+'s';
+  const score=Adaptive.score(S.hist,S.topic,S.lv);
+  document.getElementById('sSco').textContent=score;
+  document.getElementById('mPct').textContent=score+'%';
+  document.getElementById('mBar').style.width=score+'%';
+}
+
+function updateAdaptive(){
+  const score=Adaptive.score(S.hist,S.topic,S.lv);
+  const rec=Adaptive.rec(score,S.lv);
+  const n=S.hist.filter(h=>h.topic===S.topic&&h.lv===S.lv).length;
+  const m=Adaptive.msg(score,rec,n);
+  document.getElementById('adSt').innerHTML=m;
+  if(n>=3){const b=document.getElementById('sugB'),t=document.getElementById('sugT');if(b&&t){b.classList.add('show');t.textContent=m.replace(/<[^>]+>/g,'')}}
+}
+
+// ================================================================
+// NAV
+// ================================================================
+function nextEx(){const list=DB[S.topic]?.levels[S.lv];if(!list)return;S.idx=(S.idx+1)%list.length;renderEx()}
+
+function newVariant(){const ex=getEx();if(!ex)return;const vk=`${S.topic}_${S.lv}_${ex.id}`;S.vars[vk]=ex.gen();renderEx();toast('🔄 Nuevos valores generados para el mismo ejercicio.')}
+
+function clearAll(){if(!confirm('¿Borrar todo el progreso?'))return;Prog.clear();S.hist=[];document.getElementById('hList').innerHTML='<p style="color:var(--cd);font-size:.85rem;">Sin actividad aún.</p>';updateUI();toast('Progreso borrado.')}
+
+// ================================================================
+// INIT
+// ================================================================
+renderTopics();renderEx();updateUI();
+
+
+// ================================================================
+// BIBLIOTECA — Datos de teoría, ejemplos y actividades
+// Estructura: BIBLIO[tema][nivel] = { teoria, formulas, ejemplo, actividades[], curiosidad }
+// ================================================================
+
+// ================================================================
+// BIBLIOTECA EXTENDIDA — 15 temas · 3 niveles c/u
+// ================================================================
+const BIBLIO = {
+
+  velocity:{label:'Velocidad',icon:'→',
+    basic:{titulo:'¿Qué es la velocidad?',
+      teoria:`La <strong>velocidad media</strong> mide cuán rápido se desplaza un objeto dividiendo distancia entre tiempo. En física usamos m/s; en la vida diaria km/h. Distinción esencial: <strong>rapidez</strong> (escalar, solo magnitud) vs <strong>velocidad</strong> (vector, tiene dirección).<br><br>
+      Si recorre distancias iguales en tiempos iguales, el movimiento es <strong>uniforme</strong> (MRU). Si la velocidad cambia, calculamos el promedio: v̄ = Δx/Δt.`,
+      formulas:['v = d / t','d = v · t','t = d / v','1 km/h = 0.2778 m/s','1 m/s = 3.6 km/h'],
+      ejemplo:{titulo:'Usain Bolt — 100 m planos (Pekín 2008)',
+        texto:`Recorrió 100 m en 9.58 s:<br><code>v = 100/9.58 ≈ 10.44 m/s ≈ 37.6 km/h</code><br>Un auto en ciudad va ~50 km/h = 13.9 m/s. La velocidad del sonido es 340 m/s — Bolt corre al 3% de esa velocidad. La luz viaja 1,200,000 veces más rápido que un avión comercial.`},
+      actividades:[
+        {texto:'Un autobús recorre 240 km en 3 h. Calcula v en km/h y m/s.',datos:['d=240 km','t=3 h'],respuesta:'v=80 km/h → 80×(1000/3600)=<strong>22.2 m/s</strong>'},
+        {texto:'Un tren recorre 450 km a 150 km/h. ¿Cuántas horas tarda?',datos:['d=450 km','v=150 km/h'],respuesta:'t=450/150=<strong>3 horas</strong>'},
+        {texto:'Un caracol avanza 10 cm en 2 min. ¿Tiempo para cruzar 30 cm?',datos:['v=5 cm/min','d=30 cm'],respuesta:'t=30/5=<strong>6 minutos</strong>'}
+      ],
+      curiosidad:'La luz recorre ~300,000 km/s. En 1 segundo, un avión comercial solo avanza ~0.25 km. La luz es 1.2 millones de veces más rápida que un avión de pasajeros.'},
+    intermediate:{titulo:'Velocidad instantánea y relativa',
+      teoria:`La <strong>velocidad instantánea</strong> es la derivada de la posición: v = dx/dt — lo que indica el velocímetro en cada momento.<br><br>
+      <strong>Velocidad relativa:</strong> mismo sentido → resta; sentidos opuestos → suma.<br>
+      <strong>Promedio en viaje de ida y vuelta:</strong> NO es la media aritmética sino la media armónica: v̄ = 2v₁v₂/(v₁+v₂). La velocidad más lenta domina porque pasas más tiempo en ella.`,
+      formulas:["v_inst = dx/dt",'v_rel = |v₁−v₂| (mismo)','v_rel = v₁+v₂ (opuestos)','v̄(ida-vuelta) = 2v₁v₂/(v₁+v₂)'],
+      ejemplo:{titulo:'El error clásico del promedio',
+        texto:`Ida a 60 km/h, vuelta a 120 km/h. La gente dice 90 km/h — <strong>incorrecto</strong>.<br>v̄ = 2×60×120/(60+120) = 14400/180 = <strong>80 km/h</strong>. La velocidad lenta domina porque tardas más tiempo en ella.`},
+      actividades:[
+        {texto:'Tren B (110 km/h) persigue al A (80 km/h) que lleva 30 km de ventaja. ¿En cuánto lo alcanza?',datos:['v_rel=30 km/h','d=30 km'],respuesta:'t=30/30=<strong>1 hora</strong>'},
+        {texto:'Avión: 600 km a 800 km/h de ida y vuelta a 600 km/h. Velocidad media del viaje completo.',datos:['v₁=800','v₂=600'],respuesta:'v̄=2×800×600/1400=960000/1400≈<strong>685.7 km/h</strong>'}
+      ],
+      curiosidad:'El GPS compensa dos efectos relativistas: los satélites (14,000 km/h) hacen que sus relojes corran 7 μs/día más lento; la menor gravedad los hace correr 45 μs/día más rápido. Neto: +38 μs/día → sin corrección, error de ~11 km/día.'},
+    advanced:{titulo:'Cinemática vectorial y MRUA',
+      teoria:`Las <strong>cuatro ecuaciones del MRUA</strong> (aceleración constante) se derivan de integrar a=cte:<br>
+      1) v=v₀+at  2) x=x₀+v₀t+½at²  3) v²=v₀²+2aΔx  4) x=x₀+½(v₀+v)t<br><br>
+      En movimiento circular: velocidad angular ω=v/r, aceleración centrípeta a_c=v²/r=ω²r. En órbita: v_orbital=√(GM/r), velocidad de escape v_esc=√(2GM/r).`,
+      formulas:['v=v₀+at','x=x₀+v₀t+½at²','v²=v₀²+2aΔx','v_esc=√(2GM/R)','a_c=v²/r=ω²r'],
+      ejemplo:{titulo:'Frenado de emergencia — distancia total',
+        texto:`Auto a 100 km/h (27.8 m/s), a=−8 m/s², tiempo de reacción 0.8 s:<br>d_reacción=27.8×0.8=22.2 m; d_frenado=27.8²/16=48.3 m; <code>total=70.5 m</code>. A 120 km/h supera 110 m.`},
+      actividades:[
+        {texto:'Cohete: parte del reposo, alcanza 8 km/s en 120 s. Calcula a y distancia.',datos:['v₀=0','v=8000 m/s','t=120 s'],respuesta:'a=66.7 m/s²≈6.8g; x=½×66.7×14400=<strong>480,240 m≈480 km</strong>'},
+        {texto:'Auto frena de 90 km/h con a=−6 m/s². ¿Tiempo y distancia?',datos:['v₀=25 m/s','a=−6 m/s²'],respuesta:'t=25/6≈<strong>4.17 s</strong>; d=25²/12≈<strong>52.1 m</strong>'}
+      ],
+      curiosidad:'Velocidad de escape de la Tierra: 11.2 km/s. Del Sol: 617 km/s. Para un agujero negro la velocidad de escape supera la de la luz — por eso nada puede salir de él.'}
+  },
+
+  kinematics:{label:'Cinemática',icon:'⟳',
+    basic:{titulo:'Movimiento en 2D — Tiro parabólico',
+      teoria:`Clave: horizontal y vertical son <strong>independientes</strong>. Horizontal: MRU (a=0), vx=v₀cosθ. Vertical: caída libre, vy₀=v₀sinθ, a=−g. El mismo tiempo t aplica en ambos ejes. Ángulo 45° maximiza el alcance en el vacío.`,
+      formulas:['R=v₀²sin(2θ)/g','H=v₀²sin²(θ)/(2g)','T=2v₀sin(θ)/g','vx=v₀cos(θ)','vy(t)=v₀sin(θ)−gt'],
+      ejemplo:{titulo:'Tiro libre en fútbol a 28 m/s, 35°',
+        texto:`R=28²sin70°/9.8≈75.4 m; H=28²sin²35°/(19.6)≈13.2 m; T≈3.28 s. En la Luna (g=1.62) el mismo tiro llegaría a ≈456 m.`},
+      actividades:[
+        {texto:'Arquero dispara 40 m/s con 45°. Alcance, H_max y tiempo.',datos:['v₀=40','θ=45°','g=9.8'],respuesta:'R≈<strong>163.3 m</strong>; H≈<strong>40.8 m</strong>; T≈<strong>5.77 s</strong>'},
+        {texto:'Pelota a 20 m/s, 30°. ¿Pasa sobre barrera de 2 m a 15 m de distancia?',datos:['x=15 m','θ=30°','v₀=20'],respuesta:'t=15/(20cos30°)≈0.866 s; y=20sin30°×0.866−4.9×0.866²≈<strong>4.98 m>2 m ✓</strong>'}
+      ],
+      curiosidad:'Galileo demostró en el siglo XVII que todos los proyectiles sin resistencia siguen parábolas, refutando 2000 años de física aristotélica.'},
+    intermediate:{titulo:'Ecuaciones MRUA en 2D y caída libre',
+      teoria:`Caída libre pura: h=½gt², v=gt, t=√(2h/g).<br>Lanzamiento horizontal: eje X uniforme, eje Y en caída libre.<br>g varía con latitud y altitud: Ecuador g≈9.78, polos g≈9.83, cima Everest g≈9.77 m/s².`,
+      formulas:['h=½gt²','t=√(2h/g)','v_y=√(2gh)','x(t)=v₀t','v_imp=√(vx²+vy²)'],
+      ejemplo:{titulo:'Lanzamiento horizontal desde 80 m',
+        texto:`v₀=15 m/s horiz.; t=√(160/9.8)≈4.04 s; x=15×4.04≈60.6 m; vy=9.8×4.04≈39.6 m/s; v_imp≈42.4 m/s.`},
+      actividades:[
+        {texto:'Piedra desde puente 80 m a 15 m/s horizontal. ¿Dónde cae y a qué velocidad?',datos:['h=80 m','v₀=15 m/s'],respuesta:'t≈4.04 s; x≈<strong>60.6 m</strong>; v_imp≈<strong>42.4 m/s</strong>'},
+        {texto:'Objeto lanzado verticalmente a 25 m/s. ¿Altura máxima y tiempo total?',datos:['v₀=25 m/s','g=9.8'],respuesta:'H=625/19.6≈<strong>31.9 m</strong>; T=2×25/9.8≈<strong>5.10 s</strong>'}
+      ],
+      curiosidad:'En 1971 el astronauta David Scott soltó un martillo y una pluma en la Luna simultáneamente. Ante millones de televidentes, ambos cayeron exactamente igual, comprobando experimentalmente que sin aire la masa no importa.'},
+    advanced:{titulo:'Movimiento circular y centrípeto',
+      teoria:`MCU: velocidad lineal constante pero dirección cambia → aceleración centrípeta a_c=v²/r dirigida al centro.<br>Velocidad angular ω (rad/s): ω=2πf=2π/T, v=ωr.<br>MCUA: ω cambia con aceleración angular α; ecuaciones análogas a MRUA.`,
+      formulas:['a_c=v²/r=ω²r','ω=2π/T=2πf','v=ωr','ω=ω₀+αt','θ=ω₀t+½αt²'],
+      ejemplo:{titulo:'Centrífuga médica a 12,000 rpm, r=10 cm',
+        texto:`ω=12000×2π/60≈1257 rad/s; v=125.7 m/s; a_c=1257²×0.1≈158,000 m/s²≈16,100g. Separa componentes sanguíneos en minutos.`},
+      actividades:[
+        {texto:'Rueda r=0.4 m, 300 rpm. Calcula ω, v tangencial y a_c.',datos:['r=0.4 m','n=300 rpm'],respuesta:'ω≈<strong>31.4 rad/s</strong>; v≈<strong>12.57 m/s</strong>; a_c≈<strong>394.8 m/s²≈40g</strong>'},
+        {texto:'Satélite geoestacionario (r=42,164 km, T=86,400 s). Velocidad orbital.',datos:['r=4.2164×10⁷ m'],respuesta:'v=2πr/T=2π×42164000/86400≈<strong>3,074 m/s≈11,066 km/h</strong>'}
+      ],
+      curiosidad:'Los pilotos de caza experimentan hasta 9g. A 5g sostenidos la sangre no llega al cerebro; los trajes anti-g comprimen piernas para contrarrestar esto.'}
+  },
+
+  vectors:{label:'Vectores',icon:'↗',
+    basic:{titulo:'Escalares vs vectores',
+      teoria:`<strong>Escalar:</strong> solo magnitud (temperatura, masa, energía).<br><strong>Vector:</strong> magnitud + dirección (velocidad, fuerza, desplazamiento).<br><br>
+      Representación 2D: A=(Ax,Ay) cartesiano o |A|∠θ polar.<br>Conversión: Ax=|A|cosθ, Ay=|A|sinθ; |A|=√(Ax²+Ay²), θ=arctan(Ay/Ax).`,
+      formulas:['|A|=√(Ax²+Ay²)','Ax=|A|cosθ','Ay=|A|sinθ','θ=arctan(Ay/Ax)','A+B=(Ax+Bx,Ay+By)'],
+      ejemplo:{titulo:'Navegación N45°E a 20 nudos durante 3 horas',
+        texto:`d=60 mn. Norte: 60cos45°≈42.4 mn. Este: 60sin45°≈42.4 mn. El GPS descompone así cada movimiento y los suma vectorialmente.`},
+      actividades:[
+        {texto:'Avión: 300 km Este, luego 400 km Norte. ¿Distancia y rumbo desde origen?',datos:['dx=300','dy=400'],respuesta:'|d|=<strong>500 km</strong>; θ=arctan(400/300)≈<strong>53.1°</strong>'},
+        {texto:'Fuerza F=50 N a 120°. Descompón en Fx y Fy.',datos:['F=50','θ=120°'],respuesta:'Fx=50cos120°=<strong>−25 N</strong>; Fy=50sin120°≈<strong>43.3 N</strong>'}
+      ],
+      curiosidad:'Los videojuegos modernos procesan 10–100 millones de operaciones vectoriales por segundo para física, colisiones e iluminación de cada fotograma.'},
+    intermediate:{titulo:'Producto punto y producto cruz',
+      teoria:`<strong>Producto punto:</strong> A·B=AxBx+AyBy=|A||B|cosθ → escalar. Mide proyección. A·B=0 → perpendiculares.<br><strong>Producto cruz (3D):</strong> |A×B|=|A||B|sinθ → vector ⊥ a ambos; módulo = área del paralelogramo.<br>Aplicaciones: Trabajo W=F·d·cosθ (punto), Torque τ=r×F (cruz).`,
+      formulas:['A·B=AxBx+AyBy','θ=arccos(A·B/|A||B|)','|A×B|=|A||B|sinθ','W=F·d·cosθ','τ=r×F'],
+      ejemplo:{titulo:'Trabajo real al empujar una caja 6 m con F=80 N a 25°',
+        texto:`W=80×6×cos25°=480×0.906≈435 J. Si F fuera ⊥ al movimiento: W=0. Por eso la fuerza normal no realiza trabajo.`},
+      actividades:[
+        {texto:'¿Son perpendiculares A=(3,4) y B=(8,−6)?',datos:['A=(3,4)','B=(8,−6)'],respuesta:'A·B=24−24=<strong>0 → Sí, son perpendiculares (θ=90°)</strong>'},
+        {texto:'Ángulo entre A=(5,3) y B=(2,7).',datos:['A=(5,3)','B=(2,7)'],respuesta:'A·B=31; |A|=√34≈5.831; |B|=√53≈7.28; θ=arccos(31/42.45)≈<strong>43.1°</strong>'}
+      ],
+      curiosidad:'Google Maps usa producto punto para proyectar tu ubicación sobre la calle más cercana. Las IAs de lenguaje comparan millones de "vectores de palabras" en espacios de miles de dimensiones usando este mismo producto.'},
+    advanced:{titulo:'Equilibrio vectorial y álgebra lineal',
+      teoria:`Equilibrio estático: ΣF=0 en x y en y; Στ=0 rotacional.<br>Un conjunto de vectores es <strong>linealmente independiente</strong> si ninguno es combinación lineal de los demás — base del espacio vectorial.<br>Teorema trabajo-energía: W_neto=ΔK conecta vectores con energía escalar.`,
+      formulas:['ΣFx=0, ΣFy=0','Στ=0 (rotacional)','W_neto=ΔK=½mv²−½mv₀²','T=F·cosθ·d','P=F·v·cosθ'],
+      ejemplo:{titulo:'Grúa con dos cables a 60° y 45°',
+        texto:`Carga=8000 N. ΣFx=0: T_A/2=T_B/√2. ΣFy=0: T_A sin60°+T_B sin45°=8000. Resultado: T_A≈5864 N, T_B≈4141 N.`},
+      actividades:[
+        {texto:'Tres fuerzas: F₁=40N a 0°, F₂=30N a 90°, F₃ equilibra. Calcula F₃.',datos:['F₁=(40,0)','F₂=(0,30)'],respuesta:'F₃=−(40,30); |F₃|=<strong>50 N</strong> a 216.87°'},
+      ],
+      curiosidad:'Los "quants" de Wall Street modelan carteras como vectores en cientos de dimensiones. Diversificar equivale a buscar vectores casi perpendiculares (sin correlación) entre sí.'}
+  },
+
+  algebra:{label:'Álgebra',icon:'=',
+    basic:{titulo:'Ecuaciones lineales y despeje',
+      teoria:`Regla de oro: todo lo que hagas a un lado, hazlo al otro. Para despejar x en ax+b=c: primero resta b, luego divide entre a.<br><strong>Inecuaciones:</strong> al multiplicar/dividir por número negativo, el signo de la desigualdad se <strong>invierte</strong>.`,
+      formulas:['ax+b=c → x=(c−b)/a','x/a=b → x=ab','Regla de 3: a/b=c/x → x=bc/a'],
+      ejemplo:{titulo:'Conversión de temperatura con álgebra',
+        texto:`F=(9/5)C+32. Despejando: C=(F−32)×5/9. Si F=98.6°F → C=66.6×5/9=<strong>37°C</strong> (temperatura corporal).`},
+      actividades:[
+        {texto:'5(x−3)+2=3x+7. Resuelve.',datos:['5(x−3)+2=3x+7'],respuesta:'5x−13=3x+7 → 2x=20 → x=<strong>10</strong>'},
+        {texto:'Perímetro de rectángulo=56 cm. L=2A. ¿Dimensiones?',datos:['P=56','L=2A'],respuesta:'2(2A+A)=56 → 6A=56 → A≈<strong>9.33 cm</strong>, L≈<strong>18.67 cm</strong>'},
+        {texto:'¾ de un número + 12 = 36. ¿El número?',datos:['(3/4)x+12=36'],respuesta:'(3/4)x=24 → x=<strong>32</strong>'}
+      ],
+      curiosidad:'"Álgebra" viene del árabe al-jabr (reunión de partes rotas). Al-Juarismi (s. IX) la sistematizó; su nombre dio "algoritmo". Sin estas ideas no existirían computadoras.'},
+    intermediate:{titulo:'Ecuaciones cuadráticas y factorización',
+      teoria:`ax²+bx+c=0. Discriminante Δ=b²−4ac:<br>Δ>0 → 2 soluciones reales. Δ=0 → 1 (raíz doble). Δ<0 → ninguna real.<br>Fórmula general siempre funciona. Vieta: x₁+x₂=−b/a, x₁x₂=c/a.`,
+      formulas:['x=(−b±√(b²−4ac))/2a','Δ=b²−4ac','x₁+x₂=−b/a','x₁x₂=c/a','(x+p)(x+q)=x²+(p+q)x+pq'],
+      ejemplo:{titulo:'Optimización de área — cercar con 40 m',
+        texto:`y=20−x; A=x(20−x)=−(x−10)²+100. Máximo en x=10: <strong>A_max=100 m²</strong>. Un cuadrado siempre maximiza el área para un perímetro dado.`},
+      actividades:[
+        {texto:'Rectángulo: área=60 cm², L=A+7 cm. ¿Dimensiones?',datos:['A=60','L=w+7'],respuesta:'w²+7w−60=0; Δ=289; w=<strong>5 cm</strong>, L=<strong>12 cm</strong>'},
+        {texto:'x²−5x+6=0. Resuelve e interpreta con Vieta.',datos:['a=1','b=−5','c=6'],respuesta:'x₁=<strong>3</strong>, x₂=<strong>2</strong>; suma=5=−(−5)/1✓, producto=6=6/1✓'}
+      ],
+      curiosidad:'Las cuadráticas aparecen en óptica de lentes, diseño de antenas parabólicas, economía (maximizar beneficios), suspensiones de vehículos y forma de cables en puentes colgantes.'},
+    advanced:{titulo:'Sistemas de ecuaciones y regla de Cramer',
+      teoria:`Métodos: sustitución, eliminación gaussiana, Cramer (determinantes), factorización LU.<br>Regla de Cramer: D=a₁b₂−a₂b₁; x=Dx/D; y=Dy/D. Solo si D≠0. Si D=0: sin solución única.`,
+      formulas:['D=a₁b₂−a₂b₁','x=Dx/D','y=Dy/D','Dx=c₁b₂−c₂b₁','Dy=a₁c₂−a₂c₁'],
+      ejemplo:{titulo:'Mezclas industriales de ácidos',
+        texto:`x+y=100, 0.3x+0.7y=50. D=0.4; Dx=20 → x=50. Se necesitan <strong>50 L de cada concentración</strong>.`},
+      actividades:[
+        {texto:'Resuelve: 3x+2y=16 y 5x−y=9 por Cramer.',datos:['3x+2y=16','5x−y=9'],respuesta:'D=−13; x≈<strong>2.615</strong>; y≈<strong>4.077</strong>'},
+        {texto:'Dos números suman 100 y su diferencia es 24.',datos:['x+y=100','x−y=24'],respuesta:'x=<strong>62</strong>, y=<strong>38</strong>'}
+      ],
+      curiosidad:'Sistemas con millones de ecuaciones se resuelven en milisegundos para predecir clima, diseñar aviones en CAD, o renderizar películas Pixar.'}
+  },
+
+  force:{label:'Fuerzas',icon:'F',
+    basic:{titulo:'Las Tres Leyes de Newton',
+      teoria:`<strong>1ª Inercia:</strong> sin fuerza neta, el movimiento no cambia.<br><strong>2ª F=ma:</strong> fuerza neta = masa × aceleración.<br><strong>3ª Acción-reacción:</strong> fuerzas iguales y opuestas sobre cuerpos <em>distintos</em> — por eso no se cancelan entre sí.`,
+      formulas:['F_neta=m·a','a=F/m','Peso=m·g (g≈9.8 m/s²)','Impulso J=FΔt=mΔv','Presión p=F/A'],
+      ejemplo:{titulo:'Airbags — por qué salvan vidas',
+        texto:`70 kg a 60 km/h → 0. Sin airbag (Δt=0.02 s): F=58,450 N ≈ 6 toneladas. Con airbag (Δt=0.3 s): F=3,900 N — 15 veces menos.`},
+      actividades:[
+        {texto:'Elevador sube con a=2 m/s². Peso aparente de 65 kg.',datos:['m=65 kg','a=2 m/s²'],respuesta:'F=65×11.8=<strong>767 N</strong> (vs 637 N real)'},
+        {texto:'¿Fuerza neta para acelerar 1200 kg de 0 a 20 m/s en 10 s?',datos:['m=1200','a=2 m/s²'],respuesta:'F=1200×2=<strong>2400 N</strong>'}
+      ],
+      curiosidad:'La ISS flota no porque no haya gravedad sino porque está en caída libre permanente alrededor de la Tierra — la estación cae continuamente pero la curvatura terrestre "escapa" debajo.'},
+    intermediate:{titulo:'Fricción y planos inclinados',
+      teoria:`Normal en plano inclinado: N=mg·cosθ. Fricción opone movimiento:<br>Estática máxima: f_s=μ_s·N (antes de moverse). Cinética: f_k=μ_k·N (en movimiento). Siempre μ_k<μ_s.<br>En plano: a=g(sinθ−μcosθ).`,
+      formulas:['N=mg·cosθ','f=μ·N','a=g·sinθ (sin fricción)','a=g(sinθ−μcosθ)','μ=tanθ_crítico'],
+      ejemplo:{titulo:'Curva a 60 km/h con radio 40 m',
+        texto:`f_necesaria=mv²/r=1500×277/40=10,388 N. f_disponible=0.7×1500×9.8=10,290 N. ¡Casi en el límite! A 61 km/h el auto derraparía.`},
+      actividades:[
+        {texto:'Caja 25 kg en plano 35°, μ_s=0.45. ¿Se mueve?',datos:['m=25','θ=35°','μ_s=0.45'],respuesta:'Fp=140.5 N; f_max=90.3 N. Fp>f_max → <strong>se desliza</strong>'},
+        {texto:'Misma caja con μ_k=0.35. ¿Aceleración?',datos:['θ=35°','μ_k=0.35'],respuesta:'a=9.8(sin35°−0.35cos35°)≈<strong>2.82 m/s²</strong>'}
+      ],
+      curiosidad:'Neumáticos de Fórmula 1 operan a 100–120°C alcanzando μ≈1.8. Eso permite aguantar fuerzas laterales de 5–6g en curvas — más que un piloto de caza promedio.'},
+    advanced:{titulo:'Torque y dinámica rotacional',
+      teoria:`Torque τ=r×F (producto cruz); τ=r·F·sinθ. Equivale a la fuerza en rotación.<br>2ª Ley rotacional: τ=Iα, donde I = momento de inercia.<br>Momento angular L=Iω: se conserva si no hay τ externo. Patinadora que acerca brazos: I↓ → ω↑.`,
+      formulas:['τ=r·F·sinθ','τ=I·α','L=Iω=cte (sin τ)','E_rot=½Iω²','I_disco=½mr²'],
+      ejemplo:{titulo:'Manija al extremo — máximo torque',
+        texto:`Puerta de 80 cm. En la manija: τ=0.8×10=8 N·m. A 20 cm del eje: τ=0.2×10=2 N·m. ¡4× menos! Por eso la manija está lejos de la bisagra.`},
+      actividades:[
+        {texto:'Palanca 3 m, fulcro a 1 m. Peso=600 N en extremo corto. ¿Fuerza mínima en extremo largo?',datos:['L_c=1 m','L_l=2 m','W=600 N'],respuesta:'F×2=600×1 → F=<strong>300 N</strong> (ventaja mecánica ×2)'},
+        {texto:'Rueda sólida m=20 kg, r=0.5 m acelera de 0 a 6 rad/s en 4 s. Calcula τ.',datos:['I=½×20×0.25=2.5 kg·m²','α=1.5 rad/s²'],respuesta:'τ=2.5×1.5=<strong>3.75 N·m</strong>'}
+      ],
+      curiosidad:'La Tierra gira más lento cada siglo por el torque de marea de la Luna. Hace 1400 millones de años un día duraba 18 horas. La Luna se aleja 3.8 cm/año por conservación de momento angular.'}
+  },
+
+  thermodynamics:{label:'Termodinámica',icon:'🌡',
+    basic:{titulo:'Temperatura, calor y escalas',
+      teoria:`<strong>Temperatura:</strong> energía cinética promedio de las moléculas.<br><strong>Calor:</strong> energía en tránsito por diferencia de temperatura — siempre del cuerpo caliente al frío.<br>Escalas: Celsius (°C), Fahrenheit (°F), Kelvin (K, escala absoluta: 0 K=−273.15°C).<br><strong>Calor específico:</strong> Q=mcΔT. El agua tiene c=4186 J/(kg·°C) — el más alto de los materiales comunes.`,
+      formulas:['K=°C+273.15','°C=(°F−32)×5/9','°F=(9/5)°C+32','Q=m·c·ΔT','c_agua=4186 J/(kg·°C)'],
+      ejemplo:{titulo:'¿Por qué el mar modera el clima costero?',
+        texto:`Agua c=4186; roca c≈800 J/(kg·°C). La roca se calienta 5× más rápido. Por eso las costas tienen veranos frescos e inviernos suaves comparado con el interior.`},
+      actividades:[
+        {texto:'Energía para calentar 2 kg de agua de 20°C a 100°C.',datos:['m=2 kg','ΔT=80°C','c=4186'],respuesta:'Q=2×4186×80=<strong>669,760 J≈670 kJ</strong>'},
+        {texto:'Convierte 37°C, 100°C y −40°C a Fahrenheit y Kelvin.',datos:['Usar fórmulas'],respuesta:'37°C→98.6°F, 310.15 K | 100°C→212°F, 373.15 K | −40°C→−40°F (¡coinciden!), 233.15 K'}
+      ],
+      curiosidad:'El cero absoluto (0 K=−273.15°C) nunca se ha alcanzado exactamente. Los laboratorios más fríos del universo están en la Tierra — se ha llegado a nano-kelvins, millonésimas de grado sobre el cero absoluto.'},
+    intermediate:{titulo:'Leyes de la termodinámica',
+      teoria:`<strong>1ª Ley (conservación):</strong> ΔU=Q−W. La energía total se conserva.<br><strong>2ª Ley (entropía):</strong> El calor no fluye solo del frío al caliente. La entropía del universo no disminuye.<br><strong>Eficiencia de Carnot</strong> (máximo teórico): η=1−T_c/T_h (en Kelvin).`,
+      formulas:['ΔU=Q−W','η_Carnot=1−T_c/T_h','η_real<η_Carnot','W=Q_h−Q_c','pV=nRT'],
+      ejemplo:{titulo:'Motor de auto — eficiencia real vs Carnot',
+        texto:`T_h≈1200 K, T_c≈400 K. η_Carnot=66.7%. η_real≈25–35%. El "calor desperdiciado" es física fundamental, no mala ingeniería.`},
+      actividades:[
+        {texto:'Planta eléctrica: 600°C y 40°C. ¿Eficiencia Carnot máxima?',datos:['T_h=873 K','T_c=313 K'],respuesta:'η=1−313/873≈<strong>64.2%</strong>'},
+        {texto:'Motor que absorbe 5000 J/ciclo con η=30%. ¿Trabajo y calor expulsado?',datos:['Q_h=5000','η=0.30'],respuesta:'W=<strong>1500 J</strong>; Q_c=<strong>3500 J</strong>'}
+      ],
+      curiosidad:'El Sol como fuente caliente (~5778 K) y el espacio exterior (2.7 K) como fuente fría. Eficiencia Carnot solar≈99.95%. Pero los sistemas solares prácticos capturan mucho menos.'},
+    advanced:{titulo:'Entropía, ciclos y gas ideal',
+      teoria:`Entropía dS=dQ/T (reversible). Procesos del gas ideal:<br>Isotérmico (T=cte): W=nRT·ln(V₂/V₁).<br>Isocórico (V=cte): W=0, ΔU=Q.<br>Isobárico (p=cte): W=pΔV.<br>Adiabático (Q=0): pVᵞ=cte, γ=Cp/Cv.`,
+      formulas:['pV=nRT (R=8.314 J/mol·K)','W_isot=nRT·ln(V₂/V₁)','pVᵞ=cte (adiabático)','ΔS=Q/T','COP_frig=Q_c/W=T_c/(T_h−T_c)'],
+      ejemplo:{titulo:'Refrigerador — bomba de calor inversa',
+        texto:`Interior 5°C (278 K), ambiente 30°C (303 K). COP=278/(303−278)=<strong>11.12</strong>. Por cada joule eléctrico extrae 11.12 J del interior. No viola la 2ª Ley porque consume trabajo externo.`},
+      actividades:[
+        {texto:'1 mol de gas ideal a 300 K se expande isotérmicamente de 1 L a 5 L. Trabajo.',datos:['n=1','T=300 K','V₁=1 L','V₂=5 L'],respuesta:'W=nRT·ln(5)=8.314×300×1.609≈<strong>4013 J</strong>'},
+        {texto:'Gas a 2 atm, 10 L, T₁=300 K. Se comprime isocóricamente a 4 atm. T₂=?',datos:['p₁=2','p₂=4','T₁=300 K'],respuesta:'T₂=T₁×p₂/p₁=300×2=<strong>600 K=327°C</strong>'}
+      ],
+      curiosidad:'La entropía del universo ha aumentado ~10⁸⁸ veces desde el Big Bang. La vida es una isla de orden local a costa de exportar entropía masiva al espacio en forma de calor.'}
+  },
+
+  electricity:{label:'Electricidad y Magnetismo',icon:'⚡',
+    basic:{titulo:'Carga, corriente, voltaje y resistencia',
+      teoria:`<strong>Carga eléctrica</strong> (C): electrón q=−1.6×10⁻¹⁹ C.<br><strong>Corriente</strong> I (A)=Q/t: flujo de cargas por segundo.<br><strong>Voltaje</strong> V (V): diferencia de potencial — el "empuje" que mueve las cargas.<br><strong>Resistencia</strong> R (Ω): oposición al flujo. <strong>Ley de Ohm:</strong> V=IR.`,
+      formulas:['V=I·R','I=V/R','R=V/I','P=VI=I²R=V²/R','R_serie=R₁+R₂+...'],
+      ejemplo:{titulo:'Fusibles y cortocircuitos',
+        texto:`Calefactor 1500 W a 120 V: I=12.5 A, R=9.6 Ω. Cortocircuito → I→∞. El fusible (15 A) se funde antes que el cable. Es el "eslabón débil" intencional de seguridad.`},
+      actividades:[
+        {texto:'Bombillo 60 W a 120 V. ¿Corriente y resistencia?',datos:['P=60 W','V=120 V'],respuesta:'I=0.5 A; R=<strong>240 Ω</strong>'},
+        {texto:'R₁=10Ω, R₂=20Ω, R₃=30Ω en serie con V=60 V. ¿I?',datos:['R_t=60 Ω','V=60 V'],respuesta:'I=60/60=<strong>1 A</strong>'}
+      ],
+      curiosidad:'Un rayo descarga hasta 1,000,000 A en microsegundos. La corriente letal comienza en 0.1 A — 500 veces menos que un cargador de teléfono. La diferencia está en el camino por el cuerpo y la duración.'},
+    intermediate:{titulo:'Circuitos, Kirchhoff y potencia',
+      teoria:`<strong>Paralelo:</strong> mismo voltaje, corrientes se suman. 1/R_p=Σ(1/Rᵢ).<br><strong>Kirchhoff LCK:</strong> suma de corrientes en nodo=0.<br><strong>Kirchhoff LVK:</strong> suma de voltajes en lazo=0.<br>Energía: E=Pt (kWh en factura). 1 kWh=3.6×10⁶ J.`,
+      formulas:['1/R_p=1/R₁+1/R₂+...','ΣI_nodo=0','ΣV_lazo=0','E=P·t','1 kWh=3.6×10⁶ J'],
+      ejemplo:{titulo:'Factura eléctrica mensual',
+        texto:`3 LEDs 10W + TV 100W + refrigerador 150W = 280 W. 6 h/día × 30 días = 50.4 kWh. A $1.50/kWh ≈ <strong>$75.60 MXN/mes</strong>.`},
+      actividades:[
+        {texto:'R₁=40Ω y R₂=60Ω en paralelo. ¿R equivalente?',datos:['R₁=40','R₂=60'],respuesta:'1/R_p=1/40+1/60=5/120 → R_p=<strong>24 Ω</strong>'},
+        {texto:'Computadora 250 W, 8 h/día. Energía y costo a $2/kWh.',datos:['P=250 W','t=8 h'],respuesta:'E=2 kWh; Costo=<strong>$4 MXN</strong>'}
+      ],
+      curiosidad:'El cerebro humano opera con ~20 W. En eficiencia computacional supera millones de veces a cualquier supercomputadora actual. Simular un cerebro humano requeriría ~1 exaflop (10¹⁸ operaciones/s) sostenido.'},
+    advanced:{titulo:'Campo eléctrico, potencial y capacitores',
+      teoria:`Campo eléctrico: E=kQ/r² (V/m). Potencial: V=kQ/r (voltios). Ley de Coulomb: F=kQ₁Q₂/r².<br>Capacitor: Q=CV; energía U=½CV². Paralelo: C_t=ΣCᵢ. Serie: 1/C_t=Σ(1/Cᵢ).<br>Inducción magnética: F=qv×B (fuerza de Lorentz).`,
+      formulas:['E=kQ/r² (k=9×10⁹)','F=kQ₁Q₂/r²','Q=CV; U=½CV²','F=qv×B','B=μ₀I/(2πr)'],
+      ejemplo:{titulo:'Desfibrilador — descarga de capacitor',
+        texto:`C=32 μF, V=5000 V. Q=0.16 C; U=½×32×10⁻⁶×25×10⁶=<strong>400 J</strong>. Descarga en 10 ms → P_pico=40,000 W. Un destello de energía que reinicia el corazón.`},
+      actividades:[
+        {texto:'Fuerza entre Q₁=+3μC y Q₂=−2μC a 0.3 m de distancia.',datos:['Q₁=3×10⁻⁶','Q₂=2×10⁻⁶','r=0.3'],respuesta:'F=9×10⁹×6×10⁻¹²/0.09=<strong>0.6 N (atractiva)</strong>'},
+        {texto:'Capacitor 100 μF cargado a 200 V. ¿Energía almacenada?',datos:['C=100 μF','V=200 V'],respuesta:'U=½×100×10⁻⁶×40000=<strong>2 J</strong>'}
+      ],
+      curiosidad:'Cada célula de tu cuerpo funciona como un capacitor natural (~1 μF/cm²). Los canales iónicos son transistores biológicos. El cerebro es un circuito de 86 mil millones de transistores orgánicos operando en paralelo.'}
+  },
+
+  waves:{label:'Ondas y Sonido',icon:'〜',
+    basic:{titulo:'Propiedades de las ondas',
+      teoria:`Una <strong>onda</strong> transporta energía sin transportar materia. <strong>Mecánicas</strong> necesitan medio (sonido, agua). <strong>EM</strong> no (luz, radio).<br>Propiedades: amplitud A, longitud de onda λ, frecuencia f (Hz), período T=1/f, velocidad v=fλ.<br><strong>Transversales:</strong> vibración ⊥ al movimiento. <strong>Longitudinales:</strong> vibración ∥ al movimiento (sonido).`,
+      formulas:['v=f·λ','T=1/f','v_sonido≈343 m/s (aire,20°C)','v_luz=3×10⁸ m/s','E∝A²'],
+      ejemplo:{titulo:'Rango audible humano y altavoces',
+        texto:`La (440 Hz): λ=343/440=0.78 m. Subwoofer (40 Hz): λ=8.57 m. Silbido (8000 Hz): λ=4.3 cm. Por eso los subwoofers son enormes y los tweeters diminutos.`},
+      actividades:[
+        {texto:'Sonido en agua (v=1480 m/s) a 1000 Hz. ¿Longitud de onda?',datos:['v=1480','f=1000'],respuesta:'λ=1480/1000=<strong>1.48 m</strong>'},
+        {texto:'Cuerda de guitarra vibra a 330 Hz. ¿Período?',datos:['f=330 Hz'],respuesta:'T=1/330≈<strong>3.03 ms</strong>'}
+      ],
+      curiosidad:'Delfines y murciélagos usan ultrasonido hasta 200 kHz para ecolocalización. Un ultrasonido médico usa 2–18 MHz para ver tejidos internos sin radiación ionizante.'},
+    intermediate:{titulo:'Efecto Doppler, interferencia y resonancia',
+      teoria:`<strong>Efecto Doppler:</strong> fuente y observador en movimiento relativo → frecuencia cambia. Acercándose: f↑. Alejándose: f↓.<br>f' = f×(v±v_obs)/(v∓v_f)<br><strong>Interferencia constructiva:</strong> Δx=nλ. Destructiva: Δx=(n+½)λ.<br><strong>Resonancia:</strong> la amplitud crece al coincidir frecuencia externa con frecuencia natural.`,
+      formulas:["f'=f×(v±v_obs)/(v∓v_f)",'Δf/f≈v_rel/v_sonido','Δx=nλ (constructiva)','f_n=nv/(2L) (cuerda)','λ_n=2L/n'],
+      ejemplo:{titulo:'Radar de velocidad policial',
+        texto:`f=10 GHz. Auto a 27.8 m/s. Δf=2×f×v/c=2×10¹⁰×27.8/3×10⁸≈<strong>1853 Hz</strong>. El radar detecta esta diferencia y calcula la velocidad. Precisión ±1 km/h.`},
+      actividades:[
+        {texto:'Ambulancia con sirena 700 Hz a 25 m/s. ¿Frecuencia al acercarse y alejarse?',datos:['f=700','v_f=25','v_s=343'],respuesta:"Acercándose: f'=700×343/318≈<strong>755 Hz</strong>; Alejándose: f'=700×343/368≈<strong>653 Hz</strong>"},
+      ],
+      curiosidad:'El "redshift" cósmico descubierto por Hubble en 1929 demostró que el universo se expande. Las galaxias lejanas emiten luz desplazada al rojo — Doppler a escala cósmica.'},
+    advanced:{titulo:'Ondas electromagnéticas y espectro',
+      teoria:`Ondas EM: oscilaciones acopladas de E y B, perpendiculares entre sí y al movimiento. Velocidad en vacío: c=3×10⁸ m/s.<br>Espectro (menor a mayor f): radio, microondas, IR, visible (400–700 nm), UV, rayos X, gamma.<br>Energía del fotón: E=hf=hc/λ.`,
+      formulas:['c=f·λ=3×10⁸ m/s','E=hf=hc/λ','h=6.626×10⁻³⁴ J·s','n=c/v_medio','I=P/(4πr²)'],
+      ejemplo:{titulo:'WiFi y microondas — misma física',
+        texto:`WiFi 2.4 GHz: λ=12.5 cm. Microondas cocina: 2.45 GHz → excita resonancia de H₂O. Luz visible: 400–700 nm. Todos son fotones, solo difieren en frecuencia. El ojo detecta ~0.0001% del espectro total.`},
+      actividades:[
+        {texto:'Emisora FM a 98.7 MHz. ¿Longitud de onda?',datos:['f=98.7×10⁶ Hz'],respuesta:'λ=3×10⁸/98.7×10⁶≈<strong>3.04 m</strong>'},
+        {texto:'Energía de fotón de luz verde (λ=550 nm).',datos:['λ=550×10⁻⁹ m'],respuesta:'E=hc/λ≈<strong>3.61×10⁻¹⁹ J=2.26 eV</strong>'}
+      ],
+      curiosidad:'El microondas y el WiFi usan exactamente 2.45 GHz. Por eso el microondas interfiere con el WiFi. La diferencia: microondas ~1000 W, router WiFi ~0.1 W. La misma física, distinta potencia.'}
+  },
+
+  optics:{label:'Óptica',icon:'🔭',
+    basic:{titulo:'Reflexión y refracción',
+      teoria:`<strong>Reflexión:</strong> ángulo incidencia = ángulo reflexión (respecto a la normal).<br><strong>Refracción:</strong> cambio de dirección al cambiar de medio. Ley de Snell: n₁sinθ₁=n₂sinθ₂.<br><strong>Índice de refracción:</strong> n=c/v_medio. Cuanto mayor n, más lenta la luz.<br><strong>Reflexión total interna:</strong> θ_c=arcsin(n₂/n₁). Base de la fibra óptica.`,
+      formulas:['θᵢ=θᵣ','n₁sinθ₁=n₂sinθ₂ (Snell)','n=c/v_medio','θ_c=arcsin(n₂/n₁)','n_agua≈1.33, n_vidrio≈1.5'],
+      ejemplo:{titulo:'Lápiz "roto" en el agua',
+        texto:`Luz del agua (n=1.33) al aire (n=1) a θ₁=45°: sin θ₂=1.33×sin45°=0.940 → θ₂=70°. El rayo se desvía 25° al salir. Tu cerebro ve el objeto desplazado.`},
+      actividades:[
+        {texto:'Rayo del aire (n=1) al vidrio (n=1.5) con θ₁=30°. ¿θ₂?',datos:['n₁=1','n₂=1.5','θ₁=30°'],respuesta:'sinθ₂=sin30°/1.5=0.333 → θ₂≈<strong>19.47°</strong>'},
+        {texto:'Ángulo crítico para vidrio→aire (n=1.5).',datos:['n₁=1.5','n₂=1'],respuesta:'θ_c=arcsin(1/1.5)=arcsin(0.667)≈<strong>41.8°</strong>'}
+      ],
+      curiosidad:'La fibra óptica transmite datos a la velocidad de la luz por reflexión total interna. Un hilo del grosor de un cabello puede transmitir 10 terabits/segundo — equivalente a 100,000 llamadas telefónicas simultáneas.'},
+    intermediate:{titulo:'Lentes, espejos y formación de imágenes',
+      teoria:`Ecuación universal: 1/f=1/d_o+1/d_i. Aumento: M=−d_i/d_o.<br>M>0: imagen derecha. M<0: invertida. |M|>1: ampliada.<br>Lente convergente (f>0): puede dar imágenes reales o virtuales según d_o.<br>Lente divergente (f<0): siempre virtual, derecha, reducida.<br>Potencia en dioptrías: P=1/f (f en metros).`,
+      formulas:['1/f=1/dₒ+1/dᵢ','M=−dᵢ/dₒ','P=1/f (dioptrías)','f_esfera=R/2'],
+      ejemplo:{titulo:'Lentes correctoras — miopía de −2 dioptrías',
+        texto:`Miope con punto lejano a 50 cm: 1/f=0+(−1/0.5)=−2 → f=−0.5 m → <strong>P=−2 dioptrías</strong>. Negativo=divergente=para miopes. Positivo=convergente=para hipermétropes.`},
+      actividades:[
+        {texto:'Objeto a 30 cm de lente convexa f=20 cm. ¿Dónde está la imagen?',datos:['dₒ=30','f=20'],respuesta:'1/dᵢ=1/20−1/30=1/60 → dᵢ=<strong>60 cm (real, invertida, M=−2)</strong>'},
+        {texto:'Espejo cóncavo R=40 cm, objeto a 60 cm. ¿Imagen?',datos:['f=20 cm','dₒ=60'],respuesta:'dᵢ=30 cm; M=−0.5 (<strong>real, invertida, reducida</strong>)'}
+      ],
+      curiosidad:'Los anteojos fueron inventados en Italia ~1290. Permitieron a eruditos seguir leyendo más allá de los 40 años, extendiendo la vida intelectual productiva y posiblemente acelerando el Renacimiento.'},
+    advanced:{titulo:'Óptica ondulatoria — difracción e interferencia',
+      teoria:`Experimento de Young (doble rendija): demuestra que la luz es onda. Franjas brillantes: d·sinθ=mλ. Franjas oscuras: d·sinθ=(m+½)λ.<br>Difracción por rendija simple: mínimo a·sinθ=mλ.<br>Límite de resolución de Rayleigh: θ_min=1.22λ/D.`,
+      formulas:['d·sinθ=mλ (doble rendija)','y_m=mλL/d','a·sinθ=mλ (rendija simple)','θ_min=1.22λ/D'],
+      ejemplo:{titulo:'Telescopio Hubble — límite de resolución',
+        texto:`D=2.4 m, λ=550 nm. θ_min=1.22×550×10⁻⁹/2.4=2.8×10⁻⁷ rad≈0.057". Equivale a distinguir dos faros de auto separados 1 m a 3,600 km de distancia.`},
+      actividades:[
+        {texto:'Doble rendija: d=0.2 mm, L=1 m, λ=600 nm. Separación entre franjas.',datos:['d=2×10⁻⁴','L=1','λ=600×10⁻⁹'],respuesta:'y=λL/d=600×10⁻⁹/2×10⁻⁴=<strong>3 mm</strong>'},
+        {texto:'Resolución angular del ojo (D=3 mm, λ=550 nm).',datos:['D=3×10⁻³ m'],respuesta:'θ=1.22×550×10⁻⁹/3×10⁻³≈<strong>2.24×10⁻⁴ rad≈0.77 arcmin</strong>'}
+      ],
+      curiosidad:'Los hologramas de tu tarjeta de crédito son redes de difracción microscópicas. Leer un holograma con precisión requiere luz láser de longitud de onda específica — tecnología que aparenta "magia" pero es pura física ondulatoria.'}
+  },
+
+  energy:{label:'Energía y Trabajo',icon:'⚙',
+    basic:{titulo:'Trabajo, energía cinética y potencial',
+      teoria:`<strong>Trabajo</strong> W=F·d·cosθ: energía transferida por una fuerza. Si F⊥movimiento, W=0.<br><strong>Energía cinética</strong> K=½mv²: duplicar v cuadruplica K.<br><strong>Energía potencial gravitatoria</strong> U=mgh.<br><strong>Conservación:</strong> sin fricción, E_mec=K+U=constante.`,
+      formulas:['W=F·d·cosθ','K=½mv²','U=mgh','E_mec=K+U=cte','W_neto=ΔK'],
+      ejemplo:{titulo:'Montaña rusa desde h=40 m',
+        texto:`v=√(2gh)=√(784)=<strong>28 m/s≈100.8 km/h</strong>. En h=15 m: v=√(2×9.8×25)≈22.1 m/s. La energía potencial se convierte en cinética exactamente.`},
+      actividades:[
+        {texto:'Proyectil 2 kg a 30 m/s. ¿Energía cinética?',datos:['m=2 kg','v=30 m/s'],respuesta:'K=½×2×900=<strong>900 J</strong>'},
+        {texto:'¿Desde qué altura soltar una pelota para alcanzar 20 m/s al suelo?',datos:['v=20 m/s'],respuesta:'h=v²/(2g)=400/19.6≈<strong>20.4 m</strong>'}
+      ],
+      curiosidad:'Caer desde 10 m impacta a ~14 m/s≈50 km/h. La energía cinética es ~6,860 J — equivalente a dejar caer un auto desde 0.5 m de altura. El cuerpo humano tolera hasta ~15 J de impacto localizado.'},
+    intermediate:{titulo:'Potencia, rendimiento y energías no conservativas',
+      teoria:`<strong>Potencia</strong> P=W/t=F·v (vatios). 1 HP=746 W.<br>Con fricción: E_mec_f=E_mec_i−W_fricción (energía va a calor).<br><strong>Rendimiento</strong> η=W_útil/E_entrada<100% siempre (2ª Ley). Motor eléctrico ~90%; gasolina ~25–35%; solar ~15–22%.`,
+      formulas:['P=W/t=F·v','η=W_útil/E_entrada×100%','W_fr=f_k·d','1 HP=746 W','1 kWh=3.6×10⁶ J'],
+      ejemplo:{titulo:'Auto eléctrico vs gasolina',
+        texto:`Gasolina: 50 L (~1750 MJ), η=30% → útil=525 MJ. Eléctrico: 75 kWh (270 MJ), η=90% → útil=243 MJ. El eléctrico usa 3× menos energía bruta por km.`},
+      actividades:[
+        {texto:'Motor eléctrico 5 kW levanta 200 kg. ¿Velocidad máxima vertical?',datos:['P=5000 W','F=1960 N'],respuesta:'v=P/F=5000/1960≈<strong>2.55 m/s</strong>'},
+        {texto:'Bomba η=75% eleva 500 L/min a 30 m. ¿Potencia eléctrica?',datos:['m=500 kg/min','h=30 m'],respuesta:'P_útil=500×9.8×30/60=2450 W; P=2450/0.75=<strong>3267 W</strong>'}
+      ],
+      curiosidad:'El cuerpo humano tiene P_basal≈80 W. Los mejores ciclistas del Tour de France sostienen ~400 W durante horas con rendimiento muscular ~25%. Un auto de F1 tiene ~500 kW — 6,250 veces más que un humano en reposo.'},
+    advanced:{titulo:'Energía nuclear — E=mc²',
+      teoria:`Einstein: E=mc² — masa y energía son equivalentes. c²≈9×10¹⁶ J/kg → masa pequeña = energía enorme.<br>Fisión (U-235): ~200 MeV/fisión. Fusión (D+T→He+n): ~17.6 MeV — proceso del Sol.<br>Defecto de masa Δm: la masa del núcleo < suma de nucleones libres. Esa diferencia es la energía de enlace.`,
+      formulas:['E=mc² (c=3×10⁸ m/s)','E_enlace=Δm·c²','1 eV=1.6×10⁻¹⁹ J','1 u=931.5 MeV/c²','P_Sol≈3.85×10²⁶ W'],
+      ejemplo:{titulo:'Hiroshima — E=mc² en números reales',
+        texto:`"Little Boy" convirtió ~0.6 g en energía: E=6×10⁻⁴×(3×10⁸)²=5.4×10¹³ J≈13,000 toneladas de TNT. 0.6 gramos destruyeron una ciudad. Una central nuclear convierte ~1 kg/año → 2.5 TWh de electricidad.`},
+      actividades:[
+        {texto:'¿Energía al aniquilar 1 g de materia con 1 g de antimateria?',datos:['m=2×10⁻³ kg'],respuesta:'E=2×10⁻³×9×10¹⁶=<strong>1.8×10¹⁴ J=180 TJ</strong> (≈43 bombas de Hiroshima)'},
+        {texto:'El Sol pierde 4.3×10⁹ kg/s por fusión. ¿Potencia luminosa?',datos:['Δm=4.3×10⁹ kg/s'],respuesta:'P=4.3×10⁹×9×10¹⁶=<strong>3.87×10²⁶ W</strong> ✓'}
+      ],
+      curiosidad:'La "Tsar Bomba" (URSS, 1961) liberó 50 megatones. El Sol libera esa misma energía cada 0.5 milisegundos. Los 4,600 millones de años de vida restante del Sol consumirán en total ~3×10²⁶ kg de masa — el 0.015% de su masa total.'}
+  },
+
+  gravitation:{label:'Gravitación',icon:'🪐',
+    basic:{titulo:'Ley de Gravitación Universal',
+      teoria:`Toda masa atrae a toda otra masa: F=Gm₁m₂/r². Proporcional al producto de masas e inversamente proporcional al cuadrado de la distancia.<br>G=6.674×10⁻¹¹ N·m²/kg² — la constante más difícil de medir en física, determinada primero por Cavendish en 1798.<br>g en superficie = GM/R² (depende del planeta).`,
+      formulas:['F=Gm₁m₂/r²','G=6.674×10⁻¹¹','g=GM/R²','Peso=mg','g_tierra=9.8 m/s²'],
+      ejemplo:{titulo:'¿Por qué la Luna no cae a la Tierra?',
+        texto:`La Luna sí cae — pero avanza horizontalmente tan rápido que la curvatura terrestre escapa debajo. Es una caída libre perpetua. F_Tierra-Luna≈1.98×10²⁰ N proporciona la aceleración centrípeta de la órbita.`},
+      actividades:[
+        {texto:'Fuerza gravitacional entre dos personas de 70 kg a 1 m de distancia.',datos:['m₁=m₂=70','r=1','G=6.674×10⁻¹¹'],respuesta:'F=6.674×10⁻¹¹×4900/1≈<strong>3.27×10⁻⁷ N</strong> (indetectable sin instrumentos)'},
+        {texto:'g en Marte (M=6.42×10²³ kg, R=3.39×10⁶ m).',datos:['G=6.674×10⁻¹¹'],respuesta:'g=GM/R²≈<strong>3.72 m/s²</strong> (38% de la Tierra)'}
+      ],
+      curiosidad:'La gravedad es la más débil de las 4 fuerzas fundamentales. Un imán pequeño puede levantar un clavo venciendo la gravedad de TODO el planeta Tierra. Sin embargo, domina a escala cósmica por ser siempre atractiva y de alcance infinito.'},
+    intermediate:{titulo:'Órbitas y Leyes de Kepler',
+      teoria:`Orbita circular: gravedad=centrípeta → v_orb=√(GM/r).<br>Velocidad de escape: v_esc=√(2GM/R)=√2×v_orb en superficie.<br><strong>3ª Ley de Kepler:</strong> T²∝r³. Para el Sistema Solar: T²/r³=4π²/(GM_sol)=constante.`,
+      formulas:['v_orb=√(GM/r)','v_esc=√(2GM/R)','T²=(4π²/GM)r³','E_total=−GMm/(2r)','r_geo=42,164 km'],
+      ejemplo:{titulo:'GPS a 20,200 km de altitud',
+        texto:`r=2.656×10⁷ m. v=√(3.986×10¹⁴/2.656×10⁷)≈3,874 m/s. T≈43,080 s≈11.97 h. Con al menos 24 satélites, todo punto de la Tierra ve ≥4 simultáneamente para triangulación 3D.`},
+      actividades:[
+        {texto:'ISS a 400 km de altura (R_tierra=6371 km). Velocidad y período.',datos:['r=6771 km','GM=3.986×10¹⁴'],respuesta:'v≈<strong>7,669 m/s≈27,600 km/h</strong>; T≈<strong>92.4 min</strong>'},
+        {texto:'Tierra en 1 año a 1 UA. Usando Kepler, ¿período de Marte a 1.524 UA?',datos:['r_M=1.524 UA'],respuesta:'T²=1.524³=3.54 → T=<strong>1.88 años</strong>'}
+      ],
+      curiosidad:'La órbita geoestacionaria (35,786 km) fue propuesta por Arthur C. Clarke en 1945 — 12 años antes del primer satélite. Hoy lleva oficialmente su nombre: "Órbita Clarke". Hay ~500 satélites activos ahí.'},
+    advanced:{titulo:'Relatividad general y agujeros negros',
+      teoria:`Einstein 1915: la gravedad no es fuerza sino <strong>curvatura del espacio-tiempo</strong> por la masa-energía. Los objetos siguen geodésicas (caminos "más rectos") en ese espacio-tiempo curvado.<br>Radio de Schwarzschild: r_s=2GM/c² (agujero negro si se comprime hasta ese radio).<br>Dilatación temporal gravitacional: relojes en campo gravitacional corren más lento.`,
+      formulas:['r_s=2GM/c²','Δt=Δt₀/√(1−r_s/r)','E_fotón=hf(1−GM/rc²)','g_tt=1−2GM/(rc²)','c=3×10⁸ m/s'],
+      ejemplo:{titulo:'GPS y la relatividad — corrección esencial',
+        texto:`Sin correcciones: error acumulado de ~11.4 km/día. Relatividad especial (velocidad del satélite): −7 μs/día. Relatividad general (menor gravedad): +45 μs/día. Neto: +38 μs/día → corrección continua necesaria.`},
+      actividades:[
+        {texto:'Radio de Schwarzschild de agujero negro de 10 masas solares.',datos:['M=2×10³¹ kg','G=6.674×10⁻¹¹'],respuesta:'r_s=2×6.674×10⁻¹¹×2×10³¹/9×10¹⁶≈<strong>29,660 m≈29.7 km</strong>'},
+      ],
+      curiosidad:'M87* (fotografiado en 2019) tiene r_s≈19,000 millones de km — más grande que el Sistema Solar. Está a 53 millones de años luz. La "foto" requirió 8 telescopios en 5 continentes y petabytes de datos procesados durante 2 años.'}
+  },
+
+  modernphysics:{label:'Física Moderna',icon:'⚛',
+    basic:{titulo:'Cuántica — fotones y efecto fotoeléctrico',
+      teoria:`Einstein 1905: la luz viene en paquetes (<strong>fotones</strong>) con E=hf. El efecto fotoeléctrico solo ocurre si f≥f_mínima (la intensidad no importa). Esto inauguró la física cuántica.<br>La <strong>constante de Planck</strong> h=6.626×10⁻³⁴ J·s marca el límite del mundo cuántico.`,
+      formulas:['E=hf=hc/λ','h=6.626×10⁻³⁴ J·s','K_max=hf−φ','λ_dB=h/(mv)','1 eV=1.602×10⁻¹⁹ J'],
+      ejemplo:{titulo:'Panel solar de silicio — por qué tiene límite de ~33%',
+        texto:`Silicio necesita E≥1.12 eV. λ_max=hc/(1.12×1.6×10⁻¹⁹)≈1110 nm (infrarrojo cercano). Fotones con λ>1110 nm se convierten en calor. El límite teórico del silicio es ~33% (límite de Shockley-Queisser).`},
+      actividades:[
+        {texto:'Láser de 1 mW a λ=532 nm. ¿Fotones por segundo?',datos:['P=10⁻³ W','λ=532 nm'],respuesta:'E_f=hc/λ≈3.73×10⁻¹⁹ J; N=10⁻³/3.73×10⁻¹⁹≈<strong>2.68×10¹⁵ fotones/s</strong>'},
+        {texto:'Función de trabajo del sodio: φ=2.28 eV. Frecuencia mínima para efecto fotoeléctrico.',datos:['φ=3.65×10⁻¹⁹ J'],respuesta:'f_min=φ/h=3.65×10⁻¹⁹/6.626×10⁻³⁴≈<strong>5.51×10¹⁴ Hz</strong> (verde visible)'}
+      ],
+      curiosidad:'Einstein ganó el Nobel de 1921 por el efecto fotoeléctrico, no por la relatividad. En 1905 publicó también la relatividad especial y la explicación del movimiento browniano — el "annus mirabilis" más prolífico de la historia científica.'},
+    intermediate:{titulo:'Principio de incertidumbre y dualidad onda-partícula',
+      teoria:`De Broglie 1924: toda partícula tiene λ=h/(mv). Es una onda de probabilidad (función de onda ψ).<br><strong>Heisenberg:</strong> Δx·Δp≥ħ/2 y ΔE·Δt≥ħ/2. No es imprecisión del instrumento — es una propiedad fundamental de la naturaleza.<br>Mecánica cuántica: probabilística por naturaleza. |ψ|² es la densidad de probabilidad.`,
+      formulas:['λ=h/(mv)','Δx·Δp≥ħ/2','ΔE·Δt≥ħ/2','ħ=h/2π=1.055×10⁻³⁴ J·s','E_n=−13.6/n² eV (H)'],
+      ejemplo:{titulo:'¿Por qué el átomo no colapsa?',
+        texto:`Si el electrón se confina a r=0.1 nm: Δp≥ħ/(2×10⁻¹⁰)≈5.27×10⁻²⁵ kg·m/s. K_mín≈0.95 eV. Esta "presión cuántica" impide el colapso. La estabilidad de la materia es consecuencia directa de la incertidumbre.`},
+      actividades:[
+        {texto:'Longitud de onda de de Broglie de un electrón a 10⁶ m/s.',datos:['m_e=9.11×10⁻³¹ kg'],respuesta:'λ=6.626×10⁻³⁴/(9.11×10⁻³¹×10⁶)≈<strong>0.727 nm</strong> (del orden atómico)'},
+        {texto:'Δx=10⁻¹⁰ m para un electrón. ¿Incertidumbre mínima en velocidad?',datos:['m_e=9.11×10⁻³¹'],respuesta:'Δv=ħ/(2×Δx×m)≈<strong>580,000 m/s</strong>'}
+      ],
+      curiosidad:'En el experimento de la doble rendija, un electrón INDIVIDUAL produce un patrón de interferencia con sí mismo — pasa por ambas rendijas simultáneamente. Si mides por cuál pasó, el patrón desaparece. La realidad cuántica existe en superposición hasta ser observada.'},
+    advanced:{titulo:'Relatividad especial',
+      teoria:`Dos postulados: (1) mismas leyes físicas en todos los marcos inerciales. (2) c=constante para todos.<br>Consecuencias: dilatación temporal Δt=γΔt₀; contracción espacial L=L₀/γ; masa relativista m=γm₀.<br>Factor de Lorentz: γ=1/√(1−v²/c²). Energía total: E=γm₀c².`,
+      formulas:['γ=1/√(1−v²/c²)','Δt=γ·Δt₀','L=L₀/γ','E=γm₀c²','E²=(pc)²+(m₀c²)²'],
+      ejemplo:{titulo:'Muones cósmicos — prueba experimental de relatividad',
+        texto:`Muones a 0.998c, vida propia τ₀=2.2 μs. Sin relatividad llegarían 659 m. Con γ=15.8: τ=34.7 μs → 10.4 km. Los muones llegan a la Tierra en abundancia, exactamente como predice la relatividad.`},
+      actividades:[
+        {texto:'Nave a 0.9c durante 10 años (tiempo propio). ¿Tiempo en la Tierra?',datos:['v=0.9c','Δt₀=10 años'],respuesta:'γ=1/√0.19≈2.294 → Δt=<strong>22.94 años en la Tierra</strong>'},
+        {texto:'Protón a 0.99c. Energía cinética (m_p=1.672×10⁻²⁷ kg).',datos:['v=0.99c','γ≈7.089'],respuesta:'K=(γ−1)m₀c²=6.089×1.503×10⁻¹⁰≈<strong>9.15×10⁻¹⁰ J≈5.71 GeV</strong>'}
+      ],
+      curiosidad:'En el LHC del CERN, los protones alcanzan γ≈7,500 (0.999999991c). Su masa relativista es 7,500 veces la masa en reposo. El LHC consume ~1.3 TWh/año — el consumo de 300,000 hogares europeos — para mantener esas velocidades.'}
+  },
+
+  fluids:{label:'Mecánica de Fluidos',icon:'💧',
+    basic:{titulo:'Presión, densidad y principio de Arquímedes',
+      teoria:`<strong>Presión:</strong> p=F/A (Pa=N/m²). La presión aumenta con la profundidad: p=ρgh.<br><strong>Densidad:</strong> ρ=m/V (kg/m³). Agua: 1000 kg/m³; aire: ~1.2 kg/m³; oro: 19,300 kg/m³.<br><strong>Principio de Arquímedes:</strong> todo cuerpo sumergido experimenta una fuerza de empuje hacia arriba igual al peso del fluido desplazado. F_empuje=ρ_fluido×V_sumergido×g.`,
+      formulas:['p=F/A','p=ρgh','F_empuje=ρ_f·V·g','ρ=m/V','p_total=p_atm+ρgh'],
+      ejemplo:{titulo:'¿Por qué flota el barco de acero?',
+        texto:`Un barco de acero (ρ=7,800 kg/m³) flota porque su volumen hueco desplaza suficiente agua. Si V_total=1000 m³ y masa=200,000 kg: ρ_promedio=200,000/1000=200 kg/m³ < 1000 → flota. El empuje: 1000×1000×9.8=9.8×10⁶ N soporta el peso.`},
+      actividades:[
+        {texto:'Presión a 100 m de profundidad en el mar (ρ=1025 kg/m³).',datos:['h=100 m','ρ=1025','g=9.8'],respuesta:'p=1025×9.8×100=<strong>1,004,500 Pa≈10 atm</strong>'},
+        {texto:'¿Qué volumen de agua desplaza una bola de acero de 2 kg que flota (imposible si sólida, pero asume que empieza a hundirse)?',datos:['m=2 kg','ρ_acero=7800'],respuesta:'V_bola=m/ρ=2/7800=2.56×10⁻⁴ m³; <strong>se hunde</strong> pues ρ_acero>ρ_agua'}
+      ],
+      curiosidad:'El punto más profundo del océano (Fosa de las Marianas, ~11,000 m) tiene presión de ~1,100 atm = 1,115 kg/cm². Una persona sin traje especial sería aplastada instantáneamente. El titanio de los submaridores científicos debe soportar esa presión.'},
+    intermediate:{titulo:'Ecuación de Bernoulli y flujo laminar',
+      teoria:`Para fluido incompresible en flujo estacionario (sin viscosidad): <strong>Ecuación de Bernoulli:</strong> p+½ρv²+ρgh=constante a lo largo de una línea de flujo.<br><strong>Ecuación de continuidad:</strong> A₁v₁=A₂v₂ (flujo volumétrico conservado).<br>Si el tubo se estrecha (A↓), la velocidad aumenta (v↑) y la presión disminuye (p↓).`,
+      formulas:['p+½ρv²+ρgh=cte','A₁v₁=A₂v₂','Q=Av (caudal)','F_sustentación=ΔpA','Δp=½ρ(v₂²−v₁²)'],
+      ejemplo:{titulo:'Vuelo de avión — perfil aerodinámico',
+        texto:`El ala curva hace que el aire viaje más rápido por arriba (v_arriba>v_abajo). Por Bernoulli: p_arriba<p_abajo → diferencia de presión hacia arriba = sustentación. Un Boeing 747 genera ~600 toneladas de sustentación con alas de 541 m².`},
+      actividades:[
+        {texto:'Tubo: sección A₁=0.02 m² con v₁=2 m/s. Se estrecha a A₂=0.005 m². ¿v₂?',datos:['A₁v₁=A₂v₂'],respuesta:'v₂=A₁v₁/A₂=0.02×2/0.005=<strong>8 m/s</strong>'},
+        {texto:'Diferencia de velocidad en un ala (v_arriba=80 m/s, v_abajo=60 m/s, ρ=1.2 kg/m³). Diferencia de presión.',datos:['v₁=80','v₂=60','ρ=1.2'],respuesta:'Δp=½×1.2×(80²−60²)=0.6×(6400−3600)=<strong>1680 Pa</strong>'}
+      ],
+      curiosidad:'La paradoja de Bernoulli sorprende: al acercar dos hojas de papel paralelas y soplar entre ellas (no hacia afuera), se juntan. La alta velocidad del aire entre ellas reduce la presión, y la presión exterior las empuja hacia adentro.'},
+    advanced:{titulo:'Viscosidad, flujo turbulento y número de Reynolds',
+      teoria:`La <strong>viscosidad</strong> η mide la resistencia interna al flujo. Ley de Poiseuille: Q=πΔp·r⁴/(8ηL) — el caudal depende de r⁴, por eso arteriosclerosis reduce dramáticamente el flujo.<br><strong>Número de Reynolds:</strong> Re=ρvL/η. Re<2300: laminar. Re>4000: turbulento. Entre: transición.<br>Turbulencia es uno de los problemas no resueltos de la física clásica.`,
+      formulas:['Re=ρvL/η','Q=πΔpr⁴/(8ηL) (Poiseuille)','F_viscosa=ηA(dv/dy)','F_Stokes=6πηrv','τ=ηdv/dy'],
+      ejemplo:{titulo:'Arteriosclerosis — por qué r⁴ es crítico',
+        texto:`Si una arteria se estrecha un 20% (r→0.8r): Q∝r⁴ → Q=(0.8)⁴×Q₀=0.41×Q₀. ¡El flujo se reduce al 41%! Para compensar, el corazón debe aumentar la presión 2.4 veces → hipertensión. Una reducción del 50% del radio deja solo el 6.25% del flujo.`},
+      actividades:[
+        {texto:'Sangre (η=0.003 Pa·s, ρ=1060 kg/m³) fluye en arteria de 4 mm a 0.3 m/s. ¿Re? ¿Flujo laminar o turbulento?',datos:['η=0.003','ρ=1060','D=0.004 m','v=0.3'],respuesta:'Re=1060×0.3×0.004/0.003=<strong>424 → laminar</strong> (Re<2300)'},
+      ],
+      curiosidad:'El número de Reynolds fue propuesto por Osborne Reynolds en 1883 observando tintes en agua. Hoy aplica desde el flujo de sangre en capilares (Re~0.001) hasta aviones supersónicos (Re~10⁷). Las ecuaciones de Navier-Stokes que describen la turbulencia tienen precio Millennium Prize: $1 millón para quien las resuelva formalmente.'}
+  },
+
+  nuclear:{label:'Física Nuclear',icon:'☢',
+    basic:{titulo:'Estructura del átomo y núcleo',
+      teoria:`El <strong>átomo</strong>: núcleo (protones Z + neutrones N) rodeado de electrones. Número másico A=Z+N. Los isótopos tienen igual Z pero diferente N.<br>El <strong>núcleo</strong> tiene dimensión ~10⁻¹⁵ m (fm), 100,000 veces más pequeño que el átomo (~10⁻¹⁰ m).<br>La <strong>fuerza nuclear fuerte</strong> une protones y neutrones venciendo la repulsión eléctrica entre protones. Solo actúa a distancias <3 fm.`,
+      formulas:['A=Z+N','r_núcleo≈1.2·A^(1/3) fm','E_enlace=Δm·c²','1 fm=10⁻¹⁵ m','1 u=1.66×10⁻²⁷ kg'],
+      ejemplo:{titulo:'Helio-4 — energía de enlace por nucleón',
+        texto:`He-4: 2 protones + 2 neutrones. Masa teórica (libres): 2×1.00728+2×1.00866=4.03188 u. Masa real: 4.00260 u. Δm=0.02928 u. E_enlace=0.02928×931.5≈<strong>27.3 MeV</strong>. Por nucleón: 27.3/4=6.82 MeV/nucleón — muy estable.`},
+      actividades:[
+        {texto:'U-235: Z=92, A=235. ¿Cuántos neutrones tiene?',datos:['Z=92','A=235'],respuesta:'N=A−Z=235−92=<strong>143 neutrones</strong>'},
+        {texto:'Radio del núcleo de Au-197 (A=197).',datos:['r₀=1.2 fm','A=197'],respuesta:'r=1.2×197^(1/3)=1.2×5.82≈<strong>6.98 fm</strong>'}
+      ],
+      curiosidad:'Si el átomo de hidrógeno fuera del tamaño de un estadio de fútbol, el núcleo (protón) sería del tamaño de una pelota de golf en el centro. El átomo es casi completamente espacio vacío. La materia "sólida" es una ilusión causada por fuerzas electromagnéticas.'},
+    intermediate:{titulo:'Radiactividad y decaimiento nuclear',
+      teoria:`Núcleos inestables emiten radiación para alcanzar configuraciones más estables.<br><strong>Decaimiento α:</strong> emite ⁴He (pierde 2p+2n). Poco penetrante.<br><strong>Decaimiento β⁻:</strong> neutron→protón+electrón+antineutrino. <strong>β⁺:</strong> protón→neutron+positrón+neutrino.<br><strong>Decaimiento γ:</strong> solo fotones, no cambia A ni Z.<br><strong>Ley del decaimiento:</strong> N(t)=N₀·e^(−λt). Semivida T₁/₂=ln2/λ.`,
+      formulas:['N(t)=N₀·e^{−λt}','T½=ln2/λ=0.693/λ','Actividad A=λN','N=N₀·(½)^{t/T½}','1 Bq=1 desintegración/s'],
+      ejemplo:{titulo:'Carbono-14 — datación arqueológica',
+        texto:`C-14 T₁/₂=5,730 años. Un hueso prehistórico tiene 25% de C-14 original:<br>(½)^(t/5730)=0.25 → t/5730=2 → <strong>t=11,460 años</strong>.<br>Rango útil: ~50,000 años. Para objetos más antiguos se usan otros isótopos (U-238, T₁/₂=4.5 Ga).`},
+      actividades:[
+        {texto:'I-131 (T₁/₂=8.02 días) se usa en medicina nuclear. ¿Qué fracción queda después de 24.06 días?',datos:['n=t/T½=24.06/8.02=3'],respuesta:'N/N₀=(½)³=<strong>0.125 = 12.5%</strong>'},
+        {texto:'Actividad inicial de 1 mg de Ra-226 (T₁/₂=1600 años, M_a=226 g/mol).',datos:['m=10⁻⁶ kg','N_A=6.022×10²³'],respuesta:'N=10⁻⁶/226×10⁻³×6.022×10²³≈2.664×10¹⁵; λ=0.693/(1600×3.15×10⁷)≈1.374×10⁻¹¹; A=λN≈<strong>3.66×10⁴ Bq=37 kBq≈1 μCi</strong>'}
+      ],
+      curiosidad:'El C-14 lo crea la radiación cósmica en la atmósfera constantemente. Todo ser vivo mantiene la misma proporción C-14/C-12 que la atmósfera. Al morir, el C-14 decae sin reposición. Willard Libby ganó el Nobel de Química en 1960 por desarrollar esta técnica.'},
+    advanced:{titulo:'Fisión, fusión y aplicaciones nucleares',
+      teoria:`<strong>Fisión:</strong> núcleo pesado (U-235, Pu-239) absorbe neutrón → se divide en fragmentos + 2-3 neutrones + ~200 MeV. La reacción en cadena requiere masa crítica.<br><strong>Fusión:</strong> núcleos ligeros se unen (D+T→He-4+n) liberando ~17.6 MeV. Requiere T>100 millones K. Es el proceso del Sol y de la bomba H.<br><strong>Reactores fisionados:</strong> moderadores reducen velocidad de neutrones para mantener la cadena controlada.`,
+      formulas:['U-235+n → fragmentos+2.4n+~200 MeV','D+T → He-4+n+17.6 MeV','E=Δm·c²','k=factor de multiplicación','k=1 → reacción controlada'],
+      ejemplo:{titulo:'Central nuclear vs carbón — comparación energética',
+        texto:`1 kg de uranio enriquecido libera ~45,000 MWh de energía eléctrica.<br>1 kg de carbón libera ~8.14 kWh (0.00000814 MWh).<br>Relación: <strong>uranium/carbón ≈ 5,500,000 veces</strong> más densa energéticamente.<br>Una pastilla de uranio del tamaño de un dedo meñique = el equivalente a 1 tonelada de carbón.`},
+      actividades:[
+        {texto:'En la fisión de U-235, el neutrón libera ~200 MeV. ¿Cuánta energía en joules y en kg equivalentes de masa?',datos:['E=200 MeV=200×10⁶×1.6×10⁻¹⁹'],respuesta:'E=3.2×10⁻¹¹ J; Δm=E/c²=3.2×10⁻¹¹/9×10¹⁶≈<strong>3.56×10⁻²⁸ kg≈0.214 u</strong>'},
+      ],
+      curiosidad:'El proyecto ITER (Francia) es el reactor de fusión más grande jamás construido. Costo: ~20 mil millones de euros. Objetivo: producir 500 MW con solo 50 MW de entrada (factor Q=10). Si la fusión comercial funciona (~2050), usaría agua de mar como combustible. El deuterio en 1 litro de agua de mar equivale a 300 litros de gasolina.'}
+  },
+
+  astro:{label:'Astrofísica',icon:'🌌',
+    basic:{titulo:'El Sistema Solar y la escala del universo',
+      teoria:`El Sistema Solar tiene 8 planetas, el cinturón de asteroides, el cinturón de Kuiper y la Nube de Oort. El Sol contiene el 99.86% de la masa total.<br>Distancias astronómicas: 1 UA=1.496×10¹¹ m (Tierra-Sol). 1 año luz=9.461×10¹⁵ m. 1 pársec=3.086×10¹⁶ m=3.26 años luz.<br>La galaxia Vía Láctea tiene ~300 mil millones de estrellas, diámetro ~100,000 años luz.`,
+      formulas:['1 UA=1.496×10¹¹ m','1 año luz=9.461×10¹⁵ m','1 pc=3.086×10¹⁶ m=3.26 al','L=4πR²σT⁴ (Stefan-Boltzmann)','v_escape_sol=617 km/s'],
+      ejemplo:{titulo:'Comparaciones de escala del universo',
+        texto:`Si el Sol fuera una pelota de playa (60 cm): La Tierra sería una guisante a 65 m. Neptuno estaría a 2 km. La estrella más cercana (Proxima Centauri) estaría a ~17,000 km. La galaxia completa a ~300,000,000,000 km de esa pelota.`},
+      actividades:[
+        {texto:'Luz del Sol tarda 8 min 20 s en llegar. ¿Distancia Tierra-Sol?',datos:['t=500 s','c=3×10⁸ m/s'],respuesta:'d=500×3×10⁸=<strong>1.5×10¹¹ m=1 UA</strong> ✓'},
+        {texto:'Proxima Centauri está a 4.24 años luz. ¿En metros y en UA?',datos:['1 al=9.461×10¹⁵ m','1 UA=1.496×10¹¹ m'],respuesta:'d=4.24×9.461×10¹⁵≈<strong>4.01×10¹⁶ m≈268,000 UA</strong>'}
+      ],
+      curiosidad:'El universo observable tiene ~93 mil millones de años luz de diámetro y contiene ~2 billones de galaxias. La cantidad de estrellas en el universo observable (estimada en 10²⁴) supera la cantidad de granos de arena en todas las playas y desiertos de la Tierra.'},
+    intermediate:{titulo:'Estrellas, ciclos estelares y diagrama HR',
+      teoria:`Las estrellas se clasifican por temperatura en el <strong>diagrama Hertzsprung-Russell (HR)</strong>: secuencia principal, gigantes, supergigantes, enanas blancas.<br>El ciclo estelar depende de la masa: estrellas como el Sol viven ~10 Ga; masivas (<8M_sol) terminan como enanas blancas; más masivas terminan como estrellas de neutrones o agujeros negros.<br><strong>Ley de Stefan-Boltzmann:</strong> L=4πR²σT⁴. Las estrellas más calientes (tipo O, B) son azules y brillantes; las frías (tipo M) son rojas y tenues.`,
+      formulas:['L=4πR²σT⁴','σ=5.67×10⁻⁸ W/m²K⁴','L_sol=3.85×10²⁶ W','T_sol≈5778 K','M_sol=2×10³⁰ kg'],
+      ejemplo:{titulo:'Rigel vs el Sol — dos estrellas muy distintas',
+        texto:`Rigel (tipo B, supergigante azul): T≈12,000 K, R≈78 R_sol. L=4πR²σT⁴. Usando proporciones: L/L_sol=(R/R_sol)²×(T/T_sol)⁴=78²×(12000/5778)⁴=6084×18.1≈<strong>110,000 L_sol</strong>. Rigel brilla como 110,000 Soles.`},
+      actividades:[
+        {texto:'Luminosidad del Sol usando Stefan-Boltzmann (R=6.96×10⁸ m, T=5778 K).',datos:['σ=5.67×10⁻⁸','R=6.96×10⁸','T=5778'],respuesta:'L=4π×(6.96×10⁸)²×5.67×10⁻⁸×5778⁴≈<strong>3.85×10²⁶ W</strong> ✓'},
+        {texto:'Estrella con T=3×T_sol y R=2×R_sol. ¿Luminosidad en unidades de L_sol?',datos:['T=3','R=2'],respuesta:'L/L_sol=2²×3⁴=4×81=<strong>324 L_sol</strong>'}
+      ],
+      curiosidad:'El Sol está en la mitad de su vida, a ~4,600 millones de años. En ~5,000 millones de años se expandirá a gigante roja absorbiendo Mercurio, Venus y posiblemente la Tierra, antes de colapsar en enana blanca del tamaño de la Tierra actual.'},
+    advanced:{titulo:'Cosmología — Big Bang, expansión y materia oscura',
+      teoria:`El universo comenzó hace ~13,800 millones de años (Big Bang). Evidencias: expansión de Hubble (V_recesión=H₀·d, H₀≈70 km/s/Mpc), radiación cósmica de fondo (CMB, T=2.725 K), abundancias de helio e hidrógeno.<br><strong>Energía oscura</strong> (~68%): acelera la expansión. <strong>Materia oscura</strong> (~27%): no interactúa electromagnéticamente pero tiene masa gravitacional. Materia barionica visible: solo ~5%.`,
+      formulas:['V=H₀·d (Hubble)','H₀≈70 km/s/Mpc','z=(λ_obs−λ_emit)/λ_emit','T_CMB=2.725 K','t_universo≈13.8 Ga'],
+      ejemplo:{titulo:'Distancia de una galaxia por su redshift',
+        texto:`Una galaxia tiene z=0.1 (longitud de onda corrida 10% hacia el rojo).<br>V=z×c=0.1×3×10⁵ km/s=30,000 km/s.<br>d=V/H₀=30,000/70≈<strong>428 Mpc≈1,395 millones de años luz</strong>.<br>La vemos como era hace ~1,400 millones de años — era arcaica del universo.`},
+      actividades:[
+        {texto:'Galaxia observada con V_recesión=21,000 km/s. ¿Distancia? (H₀=70)',datos:['V=21,000','H₀=70'],respuesta:'d=21000/70=<strong>300 Mpc≈978 millones de años luz</strong>'},
+        {texto:'Temperatura de la CMB hoy: 2.725 K. Cuando el universo era 1000 veces más pequeño (redshift z=999), ¿cuál era la temperatura?',datos:['T₀=2.725 K','z=999'],respuesta:'T=T₀×(1+z)=2.725×1000=<strong>2725 K</strong> (temperatura de una estrella tipo K)'}
+      ],
+      curiosidad:'El 95% del universo está compuesto de energía oscura y materia oscura — de las que no sabemos casi nada. La materia visible (estrellas, planetas, gas) es solo el 5%. El universo que podemos ver y tocar es la excepción, no la regla.'}
+  }
+
+};
+
+
+// ================================================================
+// ESTADO DE LA BIBLIOTECA
+// ================================================================
+let bibState = { topic: 'velocity', lv: 'basic' };
+
+// ================================================================
+// TAB SWITCHING
+// ================================================================
+function switchTab(tab){
+  document.getElementById('sec-ejercicios').style.display = tab==='ejercicios'?'block':'none';
+  document.getElementById('sec-biblioteca').style.display = tab==='biblioteca'?'block':'none';
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('on', b.id==='tab-'+tab));
+  if(tab==='biblioteca') renderBib();
+}
+
+// ================================================================
+// BIBLIOTECA — RENDER
+// ================================================================
+function renderBibNav(){
+  const nav=document.getElementById('bibNav'); if(!nav)return; nav.innerHTML='';
+  Object.entries(BIBLIO).forEach(([k,v])=>{
+    const b=document.createElement('button');
+    b.className='bib-tab'+(k===bibState.topic?' on':'');
+    b.innerHTML=`${v.icon} ${v.label}`; b.onclick=()=>{bibState.topic=k;renderBib();};
+    nav.appendChild(b);
+  });
+}
+function setBibLv(lv){
+  bibState.lv=lv;
+  document.querySelectorAll('.lv-pill').forEach(b=>b.classList.toggle('on',b.id==='bpill-'+lv));
+  renderBibContent();
+}
+function renderBib(){ renderBibNav(); document.querySelectorAll('.lv-pill').forEach(b=>b.classList.toggle('on',b.id==='bpill-'+bibState.lv)); renderBibContent(); }
+
+function renderBibContent(){
+  const container=document.getElementById('bibContent'); if(!container)return;
+  const data=BIBLIO[bibState.topic]?.[bibState.lv];
+  const lvName={basic:'Básico',intermediate:'Intermedio',advanced:'Avanzado'}[bibState.lv];
+  if(!data){container.innerHTML='<p style="color:var(--cd)">Contenido no disponible.</p>';return}
+  const actsHTML=data.actividades.map((act,i)=>`
+    <div class="actividad">
+      <div class="act-lbl">Actividad ${i+1}</div>
+      <div class="act-text">${act.texto}</div>
+      <div class="act-dato">${act.datos.map(d=>`<div class="act-chip">${d}</div>`).join('')}</div>
+      <button class="btn-reveal" onclick="toggleAct(${i},'${bibState.topic}','${bibState.lv}')">Ver respuesta</button>
+      <div class="act-resp" id="act-${bibState.topic}-${bibState.lv}-${i}">✅ ${act.respuesta}</div>
+    </div>`).join('');
+
+  // TTS read text (strip HTML)
+  const ttsText=`${data.titulo}. ${data.teoria.replace(/<[^>]+>/g,' ')} Ejemplo: ${data.ejemplo.titulo}. ${data.ejemplo.texto.replace(/<[^>]+>/g,' ')}. Curiosidad: ${data.curiosidad}`.replace(/\s+/g,' ').trim();
+
+  container.innerHTML=`
+    <div class="teoria">
+      <div class="teoria-head">
+        <span class="teoria-icon">${BIBLIO[bibState.topic].icon}</span>
+        <h3>${data.titulo}</h3>
+        <span class="nivel-badge ${bibState.lv}">${lvName}</span>
+        <button class="tts-btn" id="ttsBtn" onclick="ttsToggle()" title="Leer en voz alta" aria-label="Leer en voz alta">🔊</button>
+      </div>
+      <div class="teoria-body">
+        <div class="teoria-text" id="ttsContent" data-tts="${ttsText.replace(/"/g,'&quot;')}">${data.teoria}</div>
+        <div>
+          <div class="pt" style="margin-bottom:10px">Fórmulas clave</div>
+          <div class="fstrip">${data.formulas.map(f=>`<div class="fchip">${f}</div>`).join('')}</div>
+        </div>
+        <div class="ejemplo">
+          <div class="ejemplo-lbl">${data.ejemplo.titulo}</div>
+          <div class="ejemplo-text">${data.ejemplo.texto}</div>
+        </div>
+        <div>
+          <div class="pt" style="margin-bottom:12px">Actividades</div>
+          ${actsHTML}
+        </div>
+        <div class="curiosidad">
+          <div class="cur-lbl">¿Sabías que…?</div>
+          ${data.curiosidad}
+        </div>
+      </div>
+    </div>`;
+}
+
+function toggleAct(i,topic,lv){
+  const el=document.getElementById(`act-${topic}-${lv}-${i}`); if(!el)return;
+  el.classList.toggle('show');
+  const btn=el.previousElementSibling;
+  if(btn)btn.textContent=el.classList.contains('show')?'Ocultar respuesta':'Ver respuesta';
+}
+
+// ================================================================
+// TTS — LECTOR DE VOZ
+// ================================================================
+const TTS={
+  utter:null, playing:false,
+  init(){return 'speechSynthesis' in window},
+  stop(){if(this.utter){speechSynthesis.cancel();this.playing=false;this.setBtn(false)}},
+  setBtn(playing){const b=document.getElementById('ttsBtn');if(b)b.textContent=playing?'⏹ Detener':'🔊'},
+  speak(text){
+    if(!this.init()){alert('Tu navegador no soporta síntesis de voz.');return;}
+    this.stop();
+    // Try Spanish voice
+    const voices=speechSynthesis.getVoices();
+    const esVoice=voices.find(v=>v.lang.startsWith('es'))||voices[0];
+    this.utter=new SpeechSynthesisUtterance(text);
+    this.utter.lang='es-MX';
+    if(esVoice)this.utter.voice=esVoice;
+    this.utter.rate=0.92; this.utter.pitch=1;
+    this.utter.onstart=()=>{this.playing=true;this.setBtn(true)};
+    this.utter.onend=()=>{this.playing=false;this.setBtn(false)};
+    this.utter.onerror=()=>{this.playing=false;this.setBtn(false)};
+    speechSynthesis.speak(this.utter);
+  }
+};
+
+function ttsToggle(){
+  if(TTS.playing){TTS.stop();return;}
+  const el=document.getElementById('ttsContent');
+  if(!el)return;
+  TTS.speak(el.getAttribute('data-tts'));
+}
+
+// Load voices async (some browsers need this)
+if('speechSynthesis' in window){
+  speechSynthesis.onvoiceschanged=()=>speechSynthesis.getVoices();
+}
+</script>
+
+<!-- ============================================================
+     CALCULADORA FLOTANTE
+     Botón fijo en esquina inferior izquierda.
+     Arrastreable, operaciones básicas + funciones científicas.
+============================================================ -->
+<style>
+/* Botón toggle */
+#calcToggle{
+  position:fixed;bottom:24px;left:24px;z-index:1000;
+  width:52px;height:52px;border-radius:50%;
+  background:linear-gradient(135deg,var(--am),#c47f00);
+  border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;color:#000;
+  box-shadow:0 4px 20px rgba(230,168,23,.45);
+  transition:transform .2s,box-shadow .2s;
+}
+#calcToggle:hover{transform:scale(1.1);box-shadow:0 6px 28px rgba(230,168,23,.6)}
+
+/* Ventana calculadora */
+#calcWin{
+  position:fixed;bottom:88px;left:24px;z-index:1001;
+  width:290px;
+  background:var(--sf);border:1px solid var(--br);
+  border-radius:16px;
+  box-shadow:0 16px 48px rgba(0,0,0,.6);
+  display:none;flex-direction:column;overflow:hidden;
+  user-select:none;
+}
+#calcWin.open{display:flex}
+
+/* Header arrastrable */
+#calcHead{
+  background:var(--sf2);padding:10px 14px;
+  display:flex;align-items:center;justify-content:space-between;
+  cursor:grab;border-bottom:1px solid var(--br);
+}
+#calcHead:active{cursor:grabbing}
+#calcHead span{font-family:var(--mn);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--am)}
+#calcClose{background:none;border:none;color:var(--cd);cursor:pointer;font-size:16px;line-height:1;padding:2px 6px;border-radius:4px;transition:background .15s}
+#calcClose:hover{background:rgba(248,81,73,.2);color:var(--rd)}
+
+/* Display */
+#calcDisplay{
+  padding:12px 16px;background:var(--bg);border-bottom:1px solid var(--br);
+  min-height:70px;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-end;gap:2px;
+}
+#calcExpr{font-family:var(--mn);font-size:.78rem;color:var(--cd);min-height:16px;word-break:break-all;text-align:right}
+#calcResult{font-family:var(--mn);font-size:1.6rem;color:var(--cr);word-break:break-all;text-align:right}
+#calcResult.err{color:var(--rd);font-size:1rem}
+
+/* Botones */
+#calcBtns{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:1px;background:var(--br);
+}
+.cb{
+  background:var(--sf2);border:none;
+  color:var(--cr);font-family:var(--mn);font-size:.88rem;
+  padding:14px 0;cursor:pointer;
+  transition:background .1s;
+  -webkit-tap-highlight-color:transparent;
+}
+.cb:hover{background:#2d3440}
+.cb:active{background:#3a4150}
+.cb.op{color:var(--am)}
+.cb.fn{color:var(--bl);font-size:.75rem}
+.cb.eq{background:var(--am);color:#000;font-weight:700}
+.cb.eq:hover{background:#d4960a}
+.cb.cl{color:var(--rd)}
+.cb.span2{grid-column:span 2}
+</style>
+
+<!-- Botón toggle -->
+<button id="calcToggle" onclick="toggleCalc()" aria-label="Abrir calculadora" title="Calculadora">🧮</button>
+
+<!-- Ventana calculadora -->
+<div id="calcWin" role="dialog" aria-label="Calculadora científica">
+  <div id="calcHead" onmousedown="startDrag(event)" ontouchstart="startDragTouch(event)">
+    <span>Calculadora</span>
+    <button id="calcClose" onclick="toggleCalc()" aria-label="Cerrar calculadora">✕</button>
+  </div>
+  <div id="calcDisplay">
+    <div id="calcExpr"></div>
+    <div id="calcResult">0</div>
+  </div>
+  <div id="calcBtns">
+    <!-- Fila 1 -->
+    <button class="cb fn" onclick="cFn('sin(')">sin</button>
+    <button class="cb fn" onclick="cFn('cos(')">cos</button>
+    <button class="cb fn" onclick="cFn('tan(')">tan</button>
+    <button class="cb fn" onclick="cFn('sqrt(')">√</button>
+    <!-- Fila 2 -->
+    <button class="cb fn" onclick="cFn('asin(')">asin</button>
+    <button class="cb fn" onclick="cFn('acos(')">acos</button>
+    <button class="cb fn" onclick="cFn('atan(')">atan</button>
+    <button class="cb fn" onclick="cFn('log(')">log</button>
+    <!-- Fila 3 -->
+    <button class="cb fn" onclick="cFn('PI')">π</button>
+    <button class="cb fn" onclick="cFn('E')">e</button>
+    <button class="cb fn" onclick="cFn('^')">xʸ</button>
+    <button class="cb cl" onclick="cDel()">⌫</button>
+    <!-- Fila 4 -->
+    <button class="cb cl" onclick="cClear()">AC</button>
+    <button class="cb op" onclick="cFn('(')"> ( </button>
+    <button class="cb op" onclick="cFn(')')"> ) </button>
+    <button class="cb op" onclick="cFn('%')">%</button>
+    <!-- Fila 5 -->
+    <button class="cb"    onclick="cNum('7')">7</button>
+    <button class="cb"    onclick="cNum('8')">8</button>
+    <button class="cb"    onclick="cNum('9')">9</button>
+    <button class="cb op" onclick="cFn('/')">÷</button>
+    <!-- Fila 6 -->
+    <button class="cb"    onclick="cNum('4')">4</button>
+    <button class="cb"    onclick="cNum('5')">5</button>
+    <button class="cb"    onclick="cNum('6')">6</button>
+    <button class="cb op" onclick="cFn('*')">×</button>
+    <!-- Fila 7 -->
+    <button class="cb"    onclick="cNum('1')">1</button>
+    <button class="cb"    onclick="cNum('2')">2</button>
+    <button class="cb"    onclick="cNum('3')">3</button>
+    <button class="cb op" onclick="cFn('-')">−</button>
+    <!-- Fila 8 -->
+    <button class="cb span2" onclick="cNum('0')">0</button>
+    <button class="cb"    onclick="cFn('.')">.</button>
+    <button class="cb op" onclick="cFn('+')">+</button>
+    <!-- Fila 9 -->
+    <button class="cb eq span2" onclick="cCalc()">=</button>
+    <button class="cb fn" onclick="cFn('1/')">1/x</button>
+    <button class="cb fn" onclick="cFn('(-')" title="Cambiar signo">+/−</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// LÓGICA DE LA CALCULADORA FLOTANTE
+// ============================================================
+let cExpr = '';    // expresión acumulada (string)
+let cJustCalc = false; // flag para saber si se acaba de calcular
+
+function toggleCalc(){
+  const w=document.getElementById('calcWin');
+  w.classList.toggle('open');
+  document.getElementById('calcToggle').textContent = w.classList.contains('open') ? '✕' : '🧮';
+}
+
+function cRefresh(){
+  document.getElementById('calcExpr').textContent = cExpr || '';
+}
+
+function cNum(n){
+  if(cJustCalc){ cExpr=''; cJustCalc=false; }
+  cExpr += n;
+  cRefresh();
+  // Preview en tiempo real
+  cPreview();
+}
+
+function cFn(op){
+  if(cJustCalc && !['+','-','*','/','^','%',')',].includes(op)){ cExpr=''; cJustCalc=false; }
+  if(op==='1/') { cExpr = '1/('+cExpr; cRefresh(); return; }
+  if(op==='(-') { cExpr += '(-'; cRefresh(); return; }
+  cExpr += op;
+  cJustCalc=false;
+  cRefresh();
+  cPreview();
+}
+
+function cDel(){
+  cExpr = cExpr.slice(0,-1);
+  cJustCalc=false;
+  cRefresh();
+  cPreview();
+}
+
+function cClear(){
+  cExpr=''; cJustCalc=false;
+  document.getElementById('calcExpr').textContent='';
+  document.getElementById('calcResult').textContent='0';
+  document.getElementById('calcResult').className='';
+}
+
+function cPreview(){
+  // Muestra resultado parcial mientras escribe
+  try{
+    const r = evalExpr(cExpr);
+    if(r !== null && isFinite(r)){
+      const el=document.getElementById('calcResult');
+      el.textContent = formatNum(r);
+      el.className='';
+    }
+  }catch(e){}
+}
+
+function cCalc(){
+  if(!cExpr) return;
+  try{
+    const r = evalExpr(cExpr);
+    if(r===null || !isFinite(r)) throw new Error();
+    const el=document.getElementById('calcResult');
+    el.textContent = formatNum(r);
+    el.className='';
+    document.getElementById('calcExpr').textContent = cExpr + ' =';
+    cExpr = String(r);
+    cJustCalc = true;
+  }catch(e){
+    const el=document.getElementById('calcResult');
+    el.textContent='Error';el.className='err';
+  }
+}
+
+// Formatea números: sin decimales innecesarios, notación científica si es muy grande
+function formatNum(n){
+  if(Math.abs(n)>=1e12||( Math.abs(n)<1e-6 && n!==0)) return n.toExponential(6);
+  // Máximo 10 decimales significativos
+  const s = parseFloat(n.toFixed(10)).toString();
+  return s;
+}
+
+// Evalúa la expresión de forma segura
+function evalExpr(expr){
+  if(!expr) return null;
+  // Reemplazos para convertir la expresión a JS válido
+  let e = expr
+    .replace(/sin\(/g,   'Math.sin(toRad(')
+    .replace(/cos\(/g,   'Math.cos(toRad(')
+    .replace(/tan\(/g,   'Math.tan(toRad(')
+    .replace(/asin\(/g,  'toDeg(Math.asin(')
+    .replace(/acos\(/g,  'toDeg(Math.acos(')
+    .replace(/atan\(/g,  'toDeg(Math.atan(')
+    .replace(/sqrt\(/g,  'Math.sqrt(')
+    .replace(/log\(/g,   'Math.log10(')
+    .replace(/\^/g,      '**')
+    .replace(/%/g,       '/100')
+    .replace(/PI/g,      'Math.PI')
+    .replace(/E/g,       'Math.E');
+
+  // Cierra paréntesis automáticamente si faltan
+  const open  = (e.match(/\(/g)||[]).length;
+  const close = (e.match(/\)/g)||[]).length;
+  e += ')'.repeat(Math.max(0, open-close));
+
+  // Evalúa en contexto con helpers
+  const fn = new Function('toRad','toDeg',`"use strict";return (${e})`)
+  return fn(
+    deg => deg * Math.PI / 180,
+    rad => rad * 180 / Math.PI
+  );
+}
+
+// ============================================================
+// ARRASTRE (drag) de la ventana calculadora
+// ============================================================
+let drag={active:false,ox:0,oy:0,sx:0,sy:0};
+
+function startDrag(e){
+  if(e.target.id==='calcClose')return;
+  e.preventDefault();
+  const w=document.getElementById('calcWin');
+  const r=w.getBoundingClientRect();
+  drag={active:true,ox:e.clientX-r.left,oy:e.clientY-r.top,sx:r.left,sy:r.top};
+  w.style.transition='none';
+  document.addEventListener('mousemove',onDrag);
+  document.addEventListener('mouseup',stopDrag);
+}
+
+function startDragTouch(e){
+  const t=e.touches[0];
+  const w=document.getElementById('calcWin');
+  const r=w.getBoundingClientRect();
+  drag={active:true,ox:t.clientX-r.left,oy:t.clientY-r.top};
+  w.style.transition='none';
+  document.addEventListener('touchmove',onDragTouch,{passive:false});
+  document.addEventListener('touchend',stopDrag);
+}
+
+function onDrag(e){
+  if(!drag.active)return;
+  posCalc(e.clientX-drag.ox, e.clientY-drag.oy);
+}
+function onDragTouch(e){
+  e.preventDefault();
+  const t=e.touches[0];
+  posCalc(t.clientX-drag.ox, t.clientY-drag.oy);
+}
+
+function posCalc(x,y){
+  const w=document.getElementById('calcWin');
+  const maxX=window.innerWidth-w.offsetWidth;
+  const maxY=window.innerHeight-w.offsetHeight;
+  w.style.left=Math.max(0,Math.min(x,maxX))+'px';
+  w.style.top =Math.max(0,Math.min(y,maxY))+'px';
+  w.style.bottom='auto';
+}
+
+function stopDrag(){
+  drag.active=false;
+  document.removeEventListener('mousemove',onDrag);
+  document.removeEventListener('mouseup',stopDrag);
+  document.removeEventListener('touchmove',onDragTouch);
+  document.removeEventListener('touchend',stopDrag);
+}
+
+// Teclado físico cuando la calculadora está abierta
+document.addEventListener('keydown',e=>{
+  const w=document.getElementById('calcWin');
+  if(!w.classList.contains('open'))return;
+  // No interferir con el input de respuesta
+  if(document.activeElement && document.activeElement.id==='ai')return;
+  const map={'0':'0','1':'1','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9','.':'.','+'  :'+','-':'-','*':'*','/':'/','^':'^','(':  '(',')'  :')','Enter':'=','='  :'=','Backspace':'back','Escape':'clear'};
+  const k=map[e.key];
+  if(!k)return;
+  e.stopPropagation();
+  if(k==='=')cCalc();
+  else if(k==='back')cDel();
+  else if(k==='clear')cClear();
+  else if('0123456789.'.includes(k))cNum(k);
+  else cFn(k);
+});
+</script>
+</body>
+</html>
